@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3, // Incremented version
+      version: 4, // Incremented version for events table
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -30,10 +30,12 @@ class DatabaseHelper {
       await _createPaymentsTable(db);
     }
     if (oldVersion < 3) {
-      // Add missing columns to members table
       await db.execute('ALTER TABLE members ADD COLUMN email TEXT');
       await db.execute('ALTER TABLE members ADD COLUMN password TEXT');
       await db.execute('ALTER TABLE members ADD COLUMN dob TEXT');
+    }
+    if (oldVersion < 4) {
+      await _createEventsTable(db);
     }
   }
 
@@ -59,6 +61,7 @@ class DatabaseHelper {
       )
     ''');
     await _createPaymentsTable(db);
+    await _createEventsTable(db);
   }
 
   Future _createPaymentsTable(Database db) async {
@@ -75,6 +78,20 @@ class DatabaseHelper {
         paymentMethod TEXT,
         paymentDate TEXT,
         status TEXT
+      )
+    ''');
+  }
+
+  Future _createEventsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL,
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        schedule TEXT,
+        description TEXT
       )
     ''');
   }
@@ -119,5 +136,21 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> queryAllPayments() async {
     final db = await instance.database;
     return await db.query('payments');
+  }
+
+  // Event Methods
+  Future<int> insertEvent(Map<String, dynamic> event) async {
+    final db = await instance.database;
+    return await db.insert('events', event);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllEvents() async {
+    final db = await instance.database;
+    return await db.query('events', orderBy: 'date DESC');
+  }
+
+  Future<int> deleteEvent(int id) async {
+    final db = await instance.database;
+    return await db.delete('events', where: 'id = ?', whereArgs: [id]);
   }
 }

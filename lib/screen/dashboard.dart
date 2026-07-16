@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'member.dart';
 import 'feeplan.dart';
 import 'payments.dart';
+import 'events.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -125,6 +126,14 @@ class DashboardPage extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentsPage()));
+              },
+            ),
+            _buildSidebarTile(
+              icon: Icons.event,
+              title: 'Event Planner',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EventsPage()));
               },
             ),
             _buildSidebarTile(

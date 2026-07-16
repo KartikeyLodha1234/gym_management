@@ -358,7 +358,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
 
   Widget _buildReadOnlyField(String label, String value) {
     return TextFormField(
-      key: Key(value),
+      key: Key('${label}_$value'),
       initialValue: value,
       decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
       readOnly: true,

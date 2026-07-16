@@ -32,21 +32,47 @@ class _MemberPageState extends State<MemberPage> {
   }
 
   Future<void> _refreshData() async {
-    final memberData = await DatabaseHelper.instance.queryAllMembers();
-    final planData = await DatabaseHelper.instance.queryAllPlans();
-    setState(() {
-      _members.clear();
+    try {
+      final memberData = await DatabaseHelper.instance.queryAllMembers();
+      final planData = await DatabaseHelper.instance.queryAllPlans();
+      
+      List<Map<String, dynamic>> parsedMembers = [];
       for (var item in memberData) {
         final member = Map<String, dynamic>.from(item);
-        member['joinDate'] = DateTime.parse(member['joinDate']);
-        member['expiryDate'] = DateTime.parse(member['expiryDate']);
-        if (member['dob'] != null) {
-          member['dob'] = DateTime.parse(member['dob']);
+        
+        // Ensure ID is an int
+        if (member['id'] != null && member['id'] is String) {
+          member['id'] = int.tryParse(member['id'].toString()) ?? 0;
         }
-        _members.add(member);
+
+        // Standardize dates - always store as DateTime in local state
+        try {
+          if (member['joinDate'] != null && member['joinDate'] is String) {
+            member['joinDate'] = DateTime.parse(member['joinDate'].toString());
+          }
+          if (member['expiryDate'] != null && member['expiryDate'] is String) {
+            member['expiryDate'] = DateTime.parse(member['expiryDate'].toString());
+          }
+          if (member['dob'] != null && member['dob'] is String) {
+            member['dob'] = DateTime.parse(member['dob'].toString());
+          }
+        } catch (e) {
+          debugPrint("Date parsing error for member ${member['id']}: $e");
+        }
+        
+        parsedMembers.add(member);
       }
-      _plans = planData;
-    });
+
+      if (mounted) {
+        setState(() {
+          _members.clear();
+          _members.addAll(parsedMembers);
+          _plans = planData;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error refreshing data: $e");
+    }
   }
 
   Future<void> _refreshMembers() async {
@@ -257,24 +283,24 @@ class _MemberPageState extends State<MemberPage> {
                           DataCell(
                             CircleAvatar(
                               radius: 18,
-                              backgroundImage: member['imagePath'] != null ? FileImage(File(member['imagePath'])) : null,
+                              backgroundImage: member['imagePath'] != null ? FileImage(File(member['imagePath'].toString())) : null,
                               child: member['imagePath'] == null ? const Icon(Icons.person, size: 20) : null,
                             ),
                           ),
                           DataCell(Text(member['id'].toString())),
-                          DataCell(Text(member['name'])),
-                          DataCell(Text(member['mobile'])),
-                          DataCell(Text(member['plan'])),
+                          DataCell(Text(member['name'].toString())),
+                          DataCell(Text(member['mobile'].toString())),
+                          DataCell(Text(member['plan'].toString())),
                           DataCell(
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: member['status'] == 'Active' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                                color: member['status'].toString() == 'Active' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                member['status'],
-                                style: TextStyle(color: member['status'] == 'Active' ? Colors.green[700] : Colors.red[700], fontWeight: FontWeight.bold, fontSize: 12),
+                                member['status'].toString(),
+                                style: TextStyle(color: member['status'].toString() == 'Active' ? Colors.green[700] : Colors.red[700], fontWeight: FontWeight.bold, fontSize: 12),
                               ),
                             ),
                           ),
@@ -283,7 +309,7 @@ class _MemberPageState extends State<MemberPage> {
                               children: [
                                 IconButton(icon: const Icon(Icons.visibility, size: 20, color: Colors.blue), onPressed: () => _showViewDialog(member)),
                                 IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.orange), onPressed: () => _showEditMemberDialog(context, member)),
-                                IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _deleteMember(member['id'])),
+                                IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _deleteMember(int.parse(member['id'].toString()))),
                               ],
                             ),
                           ),
@@ -437,12 +463,29 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
       _emailController.text = widget.member!['email'] ?? '';
       _emergencyController.text = widget.member!['emergency'].replaceAll('+91 ', '');
       _gender = widget.member!['gender'];
-      _dob = widget.member!['dob'] != null ? DateTime.parse(widget.member!['dob']) : DateTime.now().subtract(const Duration(days: 365 * 18));
-      _joinDate = widget.member!['joinDate'];
+      
+      // Fix: Handle both String and DateTime types to avoid "type 'DateTime' is not a subtype of type 'String'"
+      if (widget.member!['dob'] != null) {
+        if (widget.member!['dob'] is String) {
+          _dob = DateTime.parse(widget.member!['dob']);
+        } else {
+          _dob = widget.member!['dob'];
+        }
+      }
+      
+      _joinDate = widget.member!['joinDate'] is String 
+          ? DateTime.parse(widget.member!['joinDate']) 
+          : widget.member!['joinDate'];
+          
+      _expiryDate = widget.member!['expiryDate'] is String 
+          ? DateTime.parse(widget.member!['expiryDate']) 
+          : widget.member!['expiryDate'];
+
       _priceController.text = widget.member!['price'];
-      _expiryDate = widget.member!['expiryDate'];
       _trainerController.text = widget.member!['trainer'];
       _passwordController.text = widget.member!['password'] ?? '';
+      _plan = widget.member!['plan'];
+
       if (widget.member!['imagePath'] != null) {
         _image = File(widget.member!['imagePath']);
       }

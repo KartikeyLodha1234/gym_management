@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 8, // Incremented for maintenance and plans tables
+      version: 10, // Incremented version for expanded maintenance and inventory
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -39,6 +39,12 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       await _createMaintenanceTable(db);
       await _createPlansTable(db);
+    }
+    if (oldVersion < 10) {
+      // Re-create maintenance with new fields or alter it
+      await db.execute('DROP TABLE IF EXISTS maintenance');
+      await _createMaintenanceTable(db);
+      await _createInventoryTable(db);
     }
   }
 
@@ -69,6 +75,7 @@ class DatabaseHelper {
     await _createAttendanceTable(db);
     await _createMaintenanceTable(db);
     await _createPlansTable(db);
+    await _createInventoryTable(db);
   }
 
   Future _createPaymentsTable(Database db) async {
@@ -135,11 +142,17 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE maintenance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        cost REAL,
+        equipmentName TEXT NOT NULL,
+        category TEXT NOT NULL,
+        serviceType TEXT NOT NULL,
+        status TEXT NOT NULL,
+        reportedBy TEXT,
+        repairedBy TEXT,
         date TEXT NOT NULL,
-        category TEXT
+        nextServiceDate TEXT,
+        cost REAL,
+        remarks TEXT,
+        partsUsed TEXT
       )
     ''');
   }
@@ -153,6 +166,17 @@ class DatabaseHelper {
         duration TEXT NOT NULL,
         features TEXT,
         color INTEGER
+      )
+    ''');
+  }
+
+  Future _createInventoryTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE inventory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        itemName TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit TEXT
       )
     ''');
   }
@@ -265,9 +289,32 @@ class DatabaseHelper {
     return await db.query('maintenance', orderBy: 'date DESC');
   }
 
+  Future<int> updateMaintenance(Map<String, dynamic> record) async {
+    final db = await instance.database;
+    int id = record['id'];
+    return await db.update('maintenance', record, where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<int> deleteMaintenance(int id) async {
     final db = await instance.database;
     return await db.delete('maintenance', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Inventory Methods
+  Future<int> insertInventory(Map<String, dynamic> item) async {
+    final db = await instance.database;
+    return await db.insert('inventory', item);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllInventory() async {
+    final db = await instance.database;
+    return await db.query('inventory');
+  }
+
+  Future<int> updateInventory(Map<String, dynamic> item) async {
+    final db = await instance.database;
+    int id = item['id'];
+    return await db.update('inventory', item, where: 'id = ?', whereArgs: [id]);
   }
 
   // Plan Methods

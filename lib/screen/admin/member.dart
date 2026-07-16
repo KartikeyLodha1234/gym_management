@@ -33,19 +33,14 @@ class _MemberPageState extends State<MemberPage> {
 
   Future<void> _refreshData() async {
     try {
-      final memberData = await DatabaseHelper.instance.queryAllMembers();
-      final planData = await DatabaseHelper.instance.queryAllPlans();
+      final memberData = await FirebaseService.instance.getAllMembers();
+      // Final planData loading depends on if you want to store plans in Firebase too.
+      // For now, let's stick to members.
       
       List<Map<String, dynamic>> parsedMembers = [];
       for (var item in memberData) {
         final member = Map<String, dynamic>.from(item);
         
-        // Ensure ID is an int
-        if (member['id'] != null && member['id'] is String) {
-          member['id'] = int.tryParse(member['id'].toString()) ?? 0;
-        }
-
-        // Standardize dates - always store as DateTime in local state
         try {
           if (member['joinDate'] != null && member['joinDate'] is String) {
             member['joinDate'] = DateTime.parse(member['joinDate'].toString());
@@ -67,7 +62,6 @@ class _MemberPageState extends State<MemberPage> {
         setState(() {
           _members.clear();
           _members.addAll(parsedMembers);
-          _plans = planData;
         });
       }
     } catch (e) {
@@ -75,34 +69,31 @@ class _MemberPageState extends State<MemberPage> {
     }
   }
 
-  Future<void> _refreshMembers() async {
-    _refreshData();
-  }
-
   Future<void> _addMember(Map<String, dynamic> member) async {
     final memberToSave = Map<String, dynamic>.from(member);
     memberToSave['status'] = 'Active';
     memberToSave['joinDate'] = (memberToSave['joinDate'] as DateTime).toIso8601String();
     memberToSave['expiryDate'] = (memberToSave['expiryDate'] as DateTime).toIso8601String();
-    // DOB is already a string here from the dialog logic
 
-    await DatabaseHelper.instance.insertMember(memberToSave);
-    _refreshMembers();
+    await FirebaseService.instance.addMember(memberToSave);
+    _refreshData();
   }
 
   Future<void> _updateMember(Map<String, dynamic> member) async {
     final memberToSave = Map<String, dynamic>.from(member);
+    final String id = memberToSave['id'];
+    memberToSave.remove('id');
+    
     memberToSave['joinDate'] = (memberToSave['joinDate'] as DateTime).toIso8601String();
     memberToSave['expiryDate'] = (memberToSave['expiryDate'] as DateTime).toIso8601String();
-    // DOB is already a string here from the dialog logic
 
-    await DatabaseHelper.instance.updateMember(memberToSave);
-    _refreshMembers();
+    await FirebaseService.instance.updateMember(id, memberToSave);
+    _refreshData();
   }
 
-  Future<void> _deleteMember(int id) async {
-    await DatabaseHelper.instance.deleteMember(id);
-    _refreshMembers();
+  Future<void> _deleteMember(dynamic id) async {
+    await FirebaseService.instance.deleteMember(id.toString());
+    _refreshData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Member deleted'), backgroundColor: Colors.red),

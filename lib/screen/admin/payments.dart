@@ -43,6 +43,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
   List<Map<String, dynamic>> _allMembers = [];
   List<Map<String, dynamic>> _allPayments = [];
   String _paymentSearchQuery = '';
+  String _filterStatus = 'All'; // All, Paid, Pending, Defaulters
   final TextEditingController _paymentSearchController = TextEditingController();
   Map<String, dynamic>? _selectedMember;
 
@@ -88,17 +89,26 @@ class _PaymentsPageState extends State<PaymentsPage> {
       };
 
       await DatabaseHelper.instance.insertPayment(paymentData);
-      _loadData(); // Refresh history
+      _loadData();
       _showSuccessDialog();
     }
   }
 
   List<Map<String, dynamic>> _getFilteredPayments() {
-    if (_paymentSearchQuery.isEmpty) return _allPayments;
     return _allPayments.where((p) {
       final name = p['memberName'].toString().toLowerCase();
       final id = p['memberId'].toString();
-      return name.contains(_paymentSearchQuery.toLowerCase()) || id.contains(_paymentSearchQuery);
+      final status = p['status'].toString();
+      
+      bool matchesSearch = name.contains(_paymentSearchQuery.toLowerCase()) || id.contains(_paymentSearchQuery);
+      bool matchesStatus = _filterStatus == 'All' || status == _filterStatus;
+      
+      if (_filterStatus == 'Defaulters') {
+        // Simple logic for demo: Inactive members are defaulters
+        return matchesSearch && status != 'Paid';
+      }
+      
+      return matchesSearch && matchesStatus;
     }).toList();
   }
 
@@ -112,13 +122,13 @@ class _PaymentsPageState extends State<PaymentsPage> {
         build: (context) => [
           pw.Header(level: 0, child: pw.Text('Kartikey Gym - Payment History')),
           pw.TableHelper.fromTextArray(
-            headers: ['ID', 'Name', 'Plan', 'Total (₹)', 'Method', 'Date'],
+            headers: ['ID', 'Name', 'Total (₹)', 'Method', 'Status', 'Date'],
             data: filtered.map((p) => [
               p['memberId'].toString(),
               p['memberName'].toString(),
-              p['plan'].toString(),
               p['totalPayable'].toString(),
               p['paymentMethod'].toString(),
+              p['status'].toString(),
               DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate'])),
             ]).toList(),
           ),
@@ -135,34 +145,29 @@ class _PaymentsPageState extends State<PaymentsPage> {
     excel.delete('Sheet1');
 
     sheetObject.appendRow([
-      TextCellValue('Member ID'),
-      TextCellValue('Member Name'),
+      TextCellValue('ID'),
+      TextCellValue('Name'),
       TextCellValue('Plan'),
-      TextCellValue('Subtotal'),
-      TextCellValue('Discount'),
-      TextCellValue('Tax'),
-      TextCellValue('Total Payable'),
+      TextCellValue('Total'),
       TextCellValue('Method'),
+      TextCellValue('Status'),
       TextCellValue('Date')
     ]);
 
-    final filtered = _getFilteredPayments();
-    for (var p in filtered) {
+    for (var p in _getFilteredPayments()) {
       sheetObject.appendRow([
         IntCellValue(p['memberId'] ?? 0),
         TextCellValue(p['memberName'].toString()),
         TextCellValue(p['plan'].toString()),
-        DoubleCellValue(double.parse(p['price'].toString())),
-        DoubleCellValue(double.parse(p['discount'].toString())),
-        DoubleCellValue(double.parse(p['tax'].toString())),
-        DoubleCellValue(double.parse(p['totalPayable'].toString())),
+        DoubleCellValue(p['totalPayable']),
         TextCellValue(p['paymentMethod'].toString()),
+        TextCellValue(p['status'].toString()),
         TextCellValue(DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate']))),
       ]);
     }
 
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/payments_history.xlsx');
+    final file = File('${directory.path}/filtered_payments.xlsx');
     final bytes = excel.save();
     if (bytes != null) {
       await file.writeAsBytes(bytes);
@@ -186,100 +191,36 @@ class _PaymentsPageState extends State<PaymentsPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            _buildCard([
+              _buildSectionTitle('Process Payment'),
+              Autocomplete<Map<String, dynamic>>(
+                displayStringForOption: (option) => option['name'],
+                optionsBuilder: (textValue) => _allMembers.where((m) => m['name'].toString().toLowerCase().contains(textValue.text.toLowerCase())),
+                onSelected: _onMemberSelected,
+                fieldViewBuilder: (ctx, ctrl, node, onSub) => TextFormField(controller: ctrl, focusNode: node, decoration: const InputDecoration(labelText: 'Search Member', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
+              ),
+              const SizedBox(height: 15),
+              _buildReadOnlyField('Member Name', _memberName),
+              const SizedBox(height: 15),
+              Row(
                 children: [
-                  _buildSectionTitle('Process New Payment'),
-                  _buildCard([
-                    Autocomplete<Map<String, dynamic>>(
-                      displayStringForOption: (option) => option['name'],
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        if (textEditingValue.text == '') {
-                          return const Iterable<Map<String, dynamic>>.empty();
-                        }
-                        return _allMembers.where((Map<String, dynamic> option) {
-                          return option['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
-                                 option['id'].toString().contains(textEditingValue.text);
-                        });
-                      },
-                      onSelected: _onMemberSelected,
-                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                        return TextFormField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          decoration: const InputDecoration(
-                            labelText: 'Search Member Name or ID',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.search),
-                          ),
-                          validator: (v) => v!.isEmpty ? 'Please select a member' : null,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 15),
-                    _buildReadOnlyField('Member Name', _memberName),
-                    const SizedBox(height: 15),
-                    Row(
-                      children: [
-                        Expanded(child: _buildReadOnlyField('Member ID', _memberId)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _buildReadOnlyField('Plan', _membershipPlan)),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    _buildReadOnlyField('Expiry Date', _memberId.isEmpty ? '' : DateFormat('dd MMM yyyy').format(_expiryDate)),
-                    const SizedBox(height: 15),
-                    TextFormField(
-                      controller: _priceController,
-                      decoration: const InputDecoration(labelText: 'Plan Price (₹)', prefixIcon: Icon(Icons.currency_rupee)),
-                      keyboardType: TextInputType.number,
-                      onChanged: (v) => setState(() {}),
-                    ),
-                    TextFormField(
-                      controller: _discountController,
-                      decoration: const InputDecoration(labelText: 'Discount (₹)', prefixIcon: Icon(Icons.money_off)),
-                      keyboardType: TextInputType.number,
-                      onChanged: (v) => setState(() {}),
-                    ),
-                    const Divider(),
-                    _buildSummaryRow('Subtotal', '₹${_subtotal.toStringAsFixed(2)}'),
-                    _buildSummaryRow('Tax (18%)', '₹${_taxAmount.toStringAsFixed(2)}'),
-                    _buildSummaryRow('Total Payable', '₹${_totalPayable.toStringAsFixed(2)}', isBold: true),
-                    const SizedBox(height: 15),
-                    const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      children: _methods.map((method) => ChoiceChip(
-                        label: Text(method),
-                        selected: _paymentMethod == method,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _paymentMethod = method);
-                        },
-                        selectedColor: const Color(0xFF2D6A4F),
-                        labelStyle: TextStyle(color: _paymentMethod == method ? Colors.white : Colors.black),
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _processPayment,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D6A4F),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Process & Save Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ]),
+                  Expanded(child: _buildReadOnlyField('ID', _memberId)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildReadOnlyField('Plan', _membershipPlan)),
                 ],
               ),
-            ),
-
+              const SizedBox(height: 15),
+              TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Amount (₹)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+              const SizedBox(height: 15),
+              _buildSummaryRow('Total Payable (incl. GST)', '₹${_totalPayable.toStringAsFixed(2)}', isBold: true),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _processPayment,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D6A4F), minimumSize: const Size.fromHeight(50)),
+                child: const Text('Confirm Payment', style: TextStyle(color: Colors.white)),
+              ),
+            ]),
             const SizedBox(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -293,38 +234,48 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 ),
               ],
             ),
-            
             _buildCard([
-              TextField(
-                controller: _paymentSearchController,
-                onChanged: (v) => setState(() => _paymentSearchQuery = v),
-                decoration: const InputDecoration(
-                  hintText: 'Filter history by Name or ID...',
-                  prefixIcon: Icon(Icons.filter_list),
-                  border: OutlineInputBorder(),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (v) => setState(() => _paymentSearchQuery = v),
+                      decoration: const InputDecoration(hintText: 'Filter by ID/Name', border: OutlineInputBorder(), prefixIcon: Icon(Icons.filter_alt)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  DropdownButton<String>(
+                    value: _filterStatus,
+                    items: ['All', 'Paid', 'Defaulters'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) => setState(() => _filterStatus = v!),
+                  ),
+                ],
               ),
               const SizedBox(height: 15),
-              SizedBox(
-                width: double.infinity,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('ID')),
-                      DataColumn(label: Text('Name')),
-                      DataColumn(label: Text('Total (₹)')),
-                      DataColumn(label: Text('Method')),
-                      DataColumn(label: Text('Date')),
-                    ],
-                    rows: filteredPayments.map((p) => DataRow(cells: [
-                      DataCell(Text(p['memberId'].toString())),
-                      DataCell(Text(p['memberName'])),
-                      DataCell(Text(p['totalPayable'].toStringAsFixed(2))),
-                      DataCell(Text(p['paymentMethod'])),
-                      DataCell(Text(DateFormat('dd MMM').format(DateTime.parse(p['paymentDate'])))),
-                    ])).toList(),
-                  ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('ID')),
+                    DataColumn(label: Text('Name')),
+                    DataColumn(label: Text('Amount')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Action')),
+                  ],
+                  rows: filteredPayments.map((p) => DataRow(cells: [
+                    DataCell(Text(p['memberId'].toString())),
+                    DataCell(Text(p['memberName'])),
+                    DataCell(Text('₹${p['totalPayable']}')),
+                    DataCell(Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: p['status'] == 'Paid' ? Colors.green[50] : Colors.red[50], borderRadius: BorderRadius.circular(10)),
+                      child: Text(p['status'], style: TextStyle(color: p['status'] == 'Paid' ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                    )),
+                    DataCell(IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () async {
+                      await DatabaseHelper.instance.deletePayment(p['id']);
+                      _loadData();
+                    })),
+                  ])).toList(),
                 ),
               ),
             ]),
@@ -335,68 +286,29 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, left: 4),
-      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))),
-    );
+    return Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))));
   }
 
   Widget _buildCard(List<Widget> children) {
     return Container(
       padding: const EdgeInsets.all(16),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );
   }
 
   Widget _buildReadOnlyField(String label, String value) {
-    return TextFormField(
-      key: Key('${label}_$value'),
-      initialValue: value,
-      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
-      readOnly: true,
-    );
+    return TextFormField(key: Key('${label}_$value'), initialValue: value, decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()), readOnly: true);
   }
 
   Widget _buildSummaryRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontSize: isBold ? 18 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, color: isBold ? const Color(0xFF2D6A4F) : Colors.black)),
-        ],
-      ),
-    );
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+      Text(value, style: TextStyle(color: const Color(0xFF2D6A4F), fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+    ]);
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        content: const Text('Payment Processed & Saved Successfully!', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedMember = null;
-                _memberId = '';
-                _memberName = '';
-                _priceController.clear();
-              });
-            }, 
-            child: const Text('OK')
-          )
-        ],
-      ),
-    );
+    showDialog(context: context, builder: (ctx) => AlertDialog(title: const Icon(Icons.check_circle, color: Colors.green, size: 50), content: const Text('Payment Saved Successfully!'), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))]));
   }
 }

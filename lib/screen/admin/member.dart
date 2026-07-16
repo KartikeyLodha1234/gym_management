@@ -572,6 +572,13 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 const SizedBox(height: 15),
                 TextFormField(controller: _emergencyController, decoration: const InputDecoration(labelText: 'Emergency Number', prefixText: '+91 ', border: OutlineInputBorder(), prefixIcon: Icon(Icons.contact_phone)), keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Enter emergency contact' : null),
                 const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  value: widget.member?['status'] ?? 'Active',
+                  items: ['Active', 'Inactive'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (v) => setState(() => widget.member?['status'] = v),
+                  decoration: const InputDecoration(labelText: 'Member Status', border: OutlineInputBorder(), prefixIcon: Icon(Icons.info_outline)),
+                ),
+                const SizedBox(height: 15),
                 DropdownButtonFormField<String>(value: _gender, items: ['Male', 'Female', 'Other'].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(), onChanged: (v) => setState(() => _gender = v!), decoration: const InputDecoration(labelText: 'Gender', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person_outline))),
                 const SizedBox(height: 15),
                 ListTile(contentPadding: EdgeInsets.zero, title: Text('DOB: ${DateFormat('dd MMM yyyy').format(_dob)}'), subtitle: const Text('Minimum 18 years required', style: TextStyle(fontSize: 12)), trailing: const Icon(Icons.calendar_today, color: Color(0xFF2D6A4F)), onTap: () async {

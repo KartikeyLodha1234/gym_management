@@ -190,6 +190,11 @@ class DatabaseHelper {
     return await db.query('payments');
   }
 
+  Future<int> deletePayment(int id) async {
+    final db = await instance.database;
+    return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
+  }
+
   // Event Methods
   Future<int> insertEvent(Map<String, dynamic> event) async {
     final db = await instance.database;

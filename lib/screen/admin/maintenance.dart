@@ -217,11 +217,16 @@ class _MaintenancePageState extends State<MaintenancePage> {
             ElevatedButton(
               onPressed: () async {
                 final updated = Map<String, dynamic>.from(record);
+                final String id = updated['id'];
+                updated.remove('id');
+                
                 updated['status'] = selectedStatus;
                 updated['repairedBy'] = techController.text;
                 updated['partsUsed'] = partsController.text;
                 updated['cost'] = double.tryParse(costController.text) ?? 0.0;
-                await FirebaseService.instance.updateMaintenance(updated);
+                
+                await FirebaseService.instance.updateMaintenance(updated..addAll({'id': id})); 
+                // In my updated FirebaseService, updateMaintenance expects the whole map and extracts 'id'
                 Navigator.pop(context);
                 _refreshRecords();
               },

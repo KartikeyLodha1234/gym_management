@@ -25,11 +25,16 @@ class _StaffPageState extends State<StaffPage> {
 
   Future<void> _refreshStaff() async {
     setState(() => _isLoading = true);
-    final data = await FirebaseService.instance.getAllStaff();
-    setState(() {
-      _staffList = data;
-      _isLoading = false;
-    });
+    try {
+      final data = await FirebaseService.instance.getAllStaff();
+      setState(() {
+        _staffList = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error loading staff: $e");
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -155,12 +160,18 @@ class _StaffPageState extends State<StaffPage> {
           if (staff == null) {
             await FirebaseService.instance.addStaff(data);
           } else {
-            // Update logic here
+            final String id = staff['id'];
+            await FirebaseService.instance.updateStaff(id, data);
           }
           _refreshStaff();
         },
       ),
     );
+  }
+
+  Future<void> _deleteStaff(dynamic id) async {
+    await FirebaseService.instance.deleteStaff(id.toString());
+    _refreshStaff();
   }
 
   void _showViewDialog(Map<String, dynamic> staff) {

@@ -59,6 +59,14 @@ class FirebaseService {
     await _db.collection('staff').add(staffData);
   }
 
+  Future<void> updateStaff(String id, Map<String, dynamic> staffData) async {
+    await _db.collection('staff').doc(id).update(staffData);
+  }
+
+  Future<void> deleteStaff(String id) async {
+    await _db.collection('staff').doc(id).delete();
+  }
+
   Future<List<Map<String, dynamic>>> getAllStaff() async {
     QuerySnapshot snapshot = await _db.collection('staff').get();
     return snapshot.docs.map((doc) => {

@@ -34,8 +34,7 @@ class _MemberPageState extends State<MemberPage> {
   Future<void> _refreshData() async {
     try {
       final memberData = await FirebaseService.instance.getAllMembers();
-      // Final planData loading depends on if you want to store plans in Firebase too.
-      // For now, let's stick to members.
+      final planData = await FirebaseService.instance.getAllPlans();
       
       List<Map<String, dynamic>> parsedMembers = [];
       for (var item in memberData) {
@@ -52,7 +51,7 @@ class _MemberPageState extends State<MemberPage> {
             member['dob'] = DateTime.parse(member['dob'].toString());
           }
         } catch (e) {
-          debugPrint("Date parsing error for member ${member['id']}: $e");
+          debugPrint("Date parsing error: $e");
         }
         
         parsedMembers.add(member);
@@ -62,6 +61,7 @@ class _MemberPageState extends State<MemberPage> {
         setState(() {
           _members.clear();
           _members.addAll(parsedMembers);
+          _plans = planData;
         });
       }
     } catch (e) {
@@ -469,13 +469,13 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
           : widget.member!['joinDate'];
           
       _expiryDate = widget.member!['expiryDate'] is String 
-          ? DateTime.parse(widget.member!['expiryDate']) 
+          ? DateTime.parse(widget.member!['expiryDate'].toString()) 
           : widget.member!['expiryDate'];
 
-      _priceController.text = widget.member!['price'];
-      _trainerController.text = widget.member!['trainer'];
+      _priceController.text = widget.member!['price'].toString();
+      _trainerController.text = widget.member!['trainer'].toString();
       _passwordController.text = widget.member!['password'] ?? '';
-      _plan = widget.member!['plan'];
+      _plan = widget.member!['plan'].toString();
 
       if (widget.member!['imagePath'] != null) {
         _image = File(widget.member!['imagePath']);
@@ -626,13 +626,17 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 const Divider(),
                 DropdownButtonFormField<String>(
                   value: _plan,
-                  items: widget.plans.map((p) => DropdownMenuItem(value: p['name'] as String, child: Text(p['name'] as String))).toList(),
+                  items: _plans.isEmpty 
+                    ? [DropdownMenuItem(value: _plan, child: Text(_plan))]
+                    : _plans.map((p) => DropdownMenuItem(value: p['name'].toString(), child: Text(p['name'].toString()))).toList(),
                   onChanged: (v) {
                     setState(() {
                       _plan = v!;
-                      final selectedPlan = widget.plans.firstWhere((p) => p['name'] == v);
-                      _priceController.text = (selectedPlan['price'] as String).replaceAll(',', '');
-                      _updateExpiryDate();
+                      final selectedPlan = _plans.firstWhere((p) => p['name'].toString() == v, orElse: () => {});
+                      if (selectedPlan.isNotEmpty) {
+                        _priceController.text = selectedPlan['price'].toString().replaceAll(',', '');
+                        _updateExpiryDateWithPlan(selectedPlan);
+                      }
                     });
                   },
                   decoration: const InputDecoration(labelText: 'Membership Plan', border: OutlineInputBorder(), prefixIcon: Icon(Icons.assignment)),
@@ -685,13 +689,20 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
     );
   }
 
-  void _updateExpiryDate() {
+  void _updateExpiryDateWithPlan(Map<String, dynamic> selectedPlan) {
     setState(() {
-      final selectedPlan = widget.plans.firstWhere((p) => p['name'] == _plan);
-      final durationStr = selectedPlan['duration'] as String;
-      if (durationStr.contains('Month')) _expiryDate = _joinDate.add(Duration(days: 30 * int.parse(durationStr.split(' ')[0])));
-      else if (durationStr.contains('Year')) _expiryDate = _joinDate.add(Duration(days: 365 * int.parse(durationStr.split(' ')[0])));
-      else _expiryDate = _joinDate.add(const Duration(days: 30));
+      final durationStr = selectedPlan['duration'].toString();
+      if (durationStr.contains('Month')) {
+        _expiryDate = _joinDate.add(Duration(days: 30 * int.parse(durationStr.split(' ')[0])));
+      } else if (durationStr.contains('Year')) {
+        _expiryDate = _joinDate.add(Duration(days: 365 * int.parse(durationStr.split(' ')[0])));
+      } else {
+        _expiryDate = _joinDate.add(const Duration(days: 30));
+      }
     });
+  }
+
+  void _updateExpiryDate() {
+    // Logic moved to _updateExpiryDateWithPlan
   }
 }

@@ -1,5 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dashboard.dart';
 import 'member.dart';
 import 'feeplan.dart';
@@ -36,18 +43,23 @@ class _PaymentsPageState extends State<PaymentsPage> {
   double get _totalPayable => (_subtotal - _discount) + _taxAmount;
 
   List<Map<String, dynamic>> _allMembers = [];
+  List<Map<String, dynamic>> _allPayments = [];
+  String _paymentSearchQuery = '';
+  final TextEditingController _paymentSearchController = TextEditingController();
   Map<String, dynamic>? _selectedMember;
 
   @override
   void initState() {
     super.initState();
-    _loadMembers();
+    _loadData();
   }
 
-  Future<void> _loadMembers() async {
-    final data = await DatabaseHelper.instance.queryAllMembers();
+  Future<void> _loadData() async {
+    final members = await DatabaseHelper.instance.queryAllMembers();
+    final payments = await DatabaseHelper.instance.queryAllPayments();
     setState(() {
-      _allMembers = data;
+      _allMembers = members;
+      _allPayments = payments;
     });
   }
 
@@ -78,12 +90,92 @@ class _PaymentsPageState extends State<PaymentsPage> {
       };
 
       await DatabaseHelper.instance.insertPayment(paymentData);
+      _loadData(); // Refresh history
       _showSuccessDialog();
+    }
+  }
+
+  List<Map<String, dynamic>> _getFilteredPayments() {
+    if (_paymentSearchQuery.isEmpty) return _allPayments;
+    return _allPayments.where((p) {
+      final name = p['memberName'].toString().toLowerCase();
+      final id = p['memberId'].toString();
+      return name.contains(_paymentSearchQuery.toLowerCase()) || id.contains(_paymentSearchQuery);
+    }).toList();
+  }
+
+  Future<void> _exportToPDF() async {
+    final pdf = pw.Document();
+    final filtered = _getFilteredPayments();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) => [
+          pw.Header(level: 0, child: pw.Text('Kartikey Gym - Payment History')),
+          pw.TableHelper.fromTextArray(
+            headers: ['ID', 'Name', 'Plan', 'Total (₹)', 'Method', 'Date'],
+            data: filtered.map((p) => [
+              p['memberId'].toString(),
+              p['memberName'].toString(),
+              p['plan'].toString(),
+              p['totalPayable'].toString(),
+              p['paymentMethod'].toString(),
+              DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate'])),
+            ]).toList(),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save());
+  }
+
+  Future<void> _exportToExcel() async {
+    var excel = Excel.createExcel();
+    Sheet sheetObject = excel['Payments'];
+    excel.delete('Sheet1');
+
+    sheetObject.appendRow([
+      TextCellValue('Member ID'),
+      TextCellValue('Member Name'),
+      TextCellValue('Plan'),
+      TextCellValue('Subtotal'),
+      TextCellValue('Discount'),
+      TextCellValue('Tax'),
+      TextCellValue('Total Payable'),
+      TextCellValue('Method'),
+      TextCellValue('Date')
+    ]);
+
+    final filtered = _getFilteredPayments();
+    for (var p in filtered) {
+      sheetObject.appendRow([
+        IntCellValue(p['memberId'] ?? 0),
+        TextCellValue(p['memberName'].toString()),
+        TextCellValue(p['plan'].toString()),
+        DoubleCellValue(double.parse(p['price'].toString())),
+        DoubleCellValue(double.parse(p['discount'].toString())),
+        DoubleCellValue(double.parse(p['tax'].toString())),
+        DoubleCellValue(double.parse(p['totalPayable'].toString())),
+        TextCellValue(p['paymentMethod'].toString()),
+        TextCellValue(DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate']))),
+      ]);
+    }
+
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/payments_history.xlsx');
+    final bytes = excel.save();
+    if (bytes != null) {
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles([XFile(file.path)], text: 'Gym Payments History');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final filteredPayments = _getFilteredPayments();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F8F5),
       appBar: AppBar(
@@ -95,101 +187,148 @@ class _PaymentsPageState extends State<PaymentsPage> {
       drawer: _buildSidebar(context),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionTitle('Member Details'),
-              _buildCard([
-                Autocomplete<Map<String, dynamic>>(
-                  displayStringForOption: (option) => option['name'],
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text == '') {
-                      return const Iterable<Map<String, dynamic>>.empty();
-                    }
-                    return _allMembers.where((Map<String, dynamic> option) {
-                      return option['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
-                             option['id'].toString().contains(textEditingValue.text);
-                    });
-                  },
-                  onSelected: _onMemberSelected,
-                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                    return TextFormField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      decoration: const InputDecoration(
-                        labelText: 'Search Member Name or ID',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.search),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionTitle('Process New Payment'),
+                  _buildCard([
+                    Autocomplete<Map<String, dynamic>>(
+                      displayStringForOption: (option) => option['name'],
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text == '') {
+                          return const Iterable<Map<String, dynamic>>.empty();
+                        }
+                        return _allMembers.where((Map<String, dynamic> option) {
+                          return option['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                                 option['id'].toString().contains(textEditingValue.text);
+                        });
+                      },
+                      onSelected: _onMemberSelected,
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: const InputDecoration(
+                            labelText: 'Search Member Name or ID',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          validator: (v) => v!.isEmpty ? 'Please select a member' : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 15),
+                    _buildReadOnlyField('Member ID', _memberId),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: [
+                        Expanded(child: _buildReadOnlyField('Plan', _membershipPlan)),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildReadOnlyField('Expiry Date', _memberId.isEmpty ? '' : DateFormat('dd MMM yyyy').format(_expiryDate))),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    TextFormField(
+                      controller: _priceController,
+                      decoration: const InputDecoration(labelText: 'Plan Price (₹)', prefixIcon: Icon(Icons.currency_rupee)),
+                      keyboardType: TextInputType.number,
+                      onChanged: (v) => setState(() {}),
+                    ),
+                    TextFormField(
+                      controller: _discountController,
+                      decoration: const InputDecoration(labelText: 'Discount (₹)', prefixIcon: Icon(Icons.money_off)),
+                      keyboardType: TextInputType.number,
+                      onChanged: (v) => setState(() {}),
+                    ),
+                    const Divider(),
+                    _buildSummaryRow('Subtotal', '₹${_subtotal.toStringAsFixed(2)}'),
+                    _buildSummaryRow('Tax (18%)', '₹${_taxAmount.toStringAsFixed(2)}'),
+                    _buildSummaryRow('Total Payable', '₹${_totalPayable.toStringAsFixed(2)}', isBold: true),
+                    const SizedBox(height: 15),
+                    const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      children: _methods.map((method) => ChoiceChip(
+                        label: Text(method),
+                        selected: _paymentMethod == method,
+                        onSelected: (selected) {
+                          if (selected) setState(() => _paymentMethod = method);
+                        },
+                        selectedColor: const Color(0xFF2D6A4F),
+                        labelStyle: TextStyle(color: _paymentMethod == method ? Colors.white : Colors.black),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _processPayment,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D6A4F),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      validator: (v) => v!.isEmpty ? 'Please select a member' : null,
-                    );
-                  },
-                ),
-                const SizedBox(height: 15),
-                _buildReadOnlyField('Member ID', _memberId),
-                const SizedBox(height: 15),
+                      child: const Text('Process & Save Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildSectionTitle('Payment History'),
                 Row(
                   children: [
-                    Expanded(child: _buildReadOnlyField('Plan', _membershipPlan)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _buildReadOnlyField('Expiry Date', _memberId.isEmpty ? '' : DateFormat('dd MMM yyyy').format(_expiryDate))),
+                    IconButton(icon: const Icon(Icons.picture_as_pdf, color: Colors.red), onPressed: _exportToPDF),
+                    IconButton(icon: const Icon(Icons.table_chart, color: Colors.green), onPressed: _exportToExcel),
                   ],
                 ),
-              ]),
-
-              const SizedBox(height: 20),
-              _buildSectionTitle('Plan & Pricing'),
-              _buildCard([
-                TextFormField(
-                  controller: _priceController,
-                  decoration: const InputDecoration(labelText: 'Plan Price (₹)', prefixIcon: Icon(Icons.currency_rupee)),
-                  keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(() {}),
+              ],
+            ),
+            
+            _buildCard([
+              TextField(
+                controller: _paymentSearchController,
+                onChanged: (v) => setState(() => _paymentSearchQuery = v),
+                decoration: const InputDecoration(
+                  hintText: 'Filter history by Name or ID...',
+                  prefixIcon: Icon(Icons.filter_list),
+                  border: OutlineInputBorder(),
                 ),
-                TextFormField(
-                  controller: _discountController,
-                  decoration: const InputDecoration(labelText: 'Discount (₹)', prefixIcon: Icon(Icons.money_off)),
-                  keyboardType: TextInputType.number,
-                  onChanged: (v) => setState(() {}),
-                ),
-                const Divider(),
-                _buildSummaryRow('Subtotal', '₹${_subtotal.toStringAsFixed(2)}'),
-                _buildSummaryRow('Tax (18%)', '₹${_taxAmount.toStringAsFixed(2)}'),
-                _buildSummaryRow('Total Payable', '₹${_totalPayable.toStringAsFixed(2)}', isBold: true),
-              ]),
-
-              const SizedBox(height: 20),
-              _buildSectionTitle('Payment Method'),
-              _buildCard([
-                Wrap(
-                  spacing: 10,
-                  children: _methods.map((method) => ChoiceChip(
-                    label: Text(method),
-                    selected: _paymentMethod == method,
-                    onSelected: (selected) {
-                      if (selected) setState(() => _paymentMethod = method);
-                    },
-                    selectedColor: const Color(0xFF2D6A4F),
-                    labelStyle: TextStyle(color: _paymentMethod == method ? Colors.white : Colors.black),
-                  )).toList(),
-                ),
-              ]),
-
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _processPayment,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D6A4F),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(60),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                ),
-                child: const Text('Process & Save Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-            ],
-          ),
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('ID')),
+                      DataColumn(label: Text('Name')),
+                      DataColumn(label: Text('Total (₹)')),
+                      DataColumn(label: Text('Method')),
+                      DataColumn(label: Text('Date')),
+                    ],
+                    rows: filteredPayments.map((p) => DataRow(cells: [
+                      DataCell(Text(p['memberId'].toString())),
+                      DataCell(Text(p['memberName'])),
+                      DataCell(Text(p['totalPayable'].toStringAsFixed(2))),
+                      DataCell(Text(p['paymentMethod'])),
+                      DataCell(Text(DateFormat('dd MMM').format(DateTime.parse(p['paymentDate'])))),
+                    ])).toList(),
+                  ),
+                ),
+              ),
+            ]),
+          ],
         ),
       ),
     );
@@ -205,18 +344,19 @@ class _PaymentsPageState extends State<PaymentsPage> {
   Widget _buildCard(List<Widget> children) {
     return Container(
       padding: const EdgeInsets.all(16),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))],
       ),
-      child: Column(children: children),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );
   }
 
   Widget _buildReadOnlyField(String label, String value) {
     return TextFormField(
-      key: Key(value), // Use key to force rebuild when value changes
+      key: Key(value),
       initialValue: value,
       decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
       readOnly: true,
@@ -247,7 +387,6 @@ class _PaymentsPageState extends State<PaymentsPage> {
             onPressed: () {
               Navigator.pop(context);
               setState(() {
-                // Reset form
                 _selectedMember = null;
                 _memberId = '';
                 _memberName = '';

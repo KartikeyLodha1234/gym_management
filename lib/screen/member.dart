@@ -524,7 +524,12 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 title: const Text('Gallery'),
                 onTap: () async {
                   final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                  if (image != null) setState(() => _image = File(image.path));
+                  if (image != null) {
+                    final appDir = await getApplicationDocumentsDirectory();
+                    final fileName = 'member_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                    final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
+                    setState(() => _image = savedImage);
+                  }
                   if (mounted) Navigator.pop(context);
                 },
               ),
@@ -533,7 +538,12 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 title: const Text('Camera'),
                 onTap: () async {
                   final XFile? image = await picker.pickImage(source: ImageSource.camera);
-                  if (image != null) setState(() => _image = File(image.path));
+                  if (image != null) {
+                    final appDir = await getApplicationDocumentsDirectory();
+                    final fileName = 'member_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                    final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
+                    setState(() => _image = savedImage);
+                  }
                   if (mounted) Navigator.pop(context);
                 },
               ),

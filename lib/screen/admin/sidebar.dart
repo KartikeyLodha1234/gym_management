@@ -6,6 +6,7 @@ import 'staff.dart';
 import 'payments.dart';
 import 'events.dart';
 import 'feeplan.dart';
+import 'userprofile.dart';
 
 class AppSidebar extends StatelessWidget {
   final String currentPage;
@@ -139,9 +140,22 @@ class AppSidebar extends StatelessWidget {
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
+                initiallyExpanded: currentPage == 'Profile',
                 leading: const Icon(Icons.admin_panel_settings, color: Color(0xFF2D6A4F)),
                 title: const Text('Admin', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))),
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outline, color: Color(0xFF2D6A4F)),
+                    title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                    tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withValues(alpha: 0.08) : null,
+                    onTap: () {
+                      if (currentPage != 'Profile') {
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const UserProfilePage()));
+                      } else {
+                        Navigator.pop(context);
+                      }
+                    },
+                  ),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

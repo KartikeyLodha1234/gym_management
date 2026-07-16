@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../database_helper.dart';
+import '../../database_helper.dart';
 import 'sidebar.dart';
 
 class EventsPage extends StatefulWidget {

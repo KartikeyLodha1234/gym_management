@@ -169,7 +169,7 @@ class _MemberPageState extends State<MemberPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
         title: const Text(
-          'memberslist',
+          'Member List',
           style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),

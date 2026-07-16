@@ -8,14 +8,8 @@ import 'package:printing/printing.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dashboard.dart';
-import 'feeplan.dart';
-import 'feeplan.dart';
+import 'sidebar.dart';
 import 'plan_data.dart';
-import 'payments.dart';
-import 'events.dart';
-import 'staff.dart';
-import 'attendance.dart';
 import '../database_helper.dart';
 
 class MemberPage extends StatefulWidget {
@@ -70,9 +64,7 @@ class _MemberPageState extends State<MemberPage> {
     final memberToSave = Map<String, dynamic>.from(member);
     memberToSave['joinDate'] = (memberToSave['joinDate'] as DateTime).toIso8601String();
     memberToSave['expiryDate'] = (memberToSave['expiryDate'] as DateTime).toIso8601String();
-    if (memberToSave['dob'] != null) {
-      memberToSave['dob'] = (memberToSave['dob'] as DateTime).toIso8601String();
-    }
+    // DOB is already a string here from the dialog logic
 
     await DatabaseHelper.instance.updateMember(memberToSave);
     _refreshMembers();
@@ -173,11 +165,11 @@ class _MemberPageState extends State<MemberPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
         title: const Text(
-          'Member List',
+          'memberslist',
           style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
-      drawer: _buildSidebar(context),
+      drawer: const AppSidebar(currentPage: 'Members List'),
       body: Column(
         children: [
           Container(
@@ -393,95 +385,6 @@ class _MemberPageState extends State<MemberPage> {
         nextId: _members.isEmpty ? 1 : _members.map((m) => m['id'] as int).reduce((a, b) => a > b ? a : b) + 1,
         onSave: _addMember,
       ),
-    );
-  }
-
-  Widget _buildSidebar(BuildContext context) {
-    return Drawer(
-      child: Container(
-        color: Colors.white,
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF2D6A4F)),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(2.0),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 40),
-                    ),
-                  ),
-                ),
-              ),
-              accountName: const Text('Kartikey Gym', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              accountEmail: const Text('admin@kartikeygym.com'),
-              onDetailsPressed: () {},
-            ),
-            _buildSidebarTile(icon: Icons.grid_view, title: 'Dashboard', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardPage()));
-            }),
-            _buildSidebarTile(icon: Icons.people, title: 'Members List', isSelected: true, onTap: () => Navigator.pop(context)),
-            _buildSidebarTile(
-              icon: Icons.how_to_reg,
-              title: 'Attendance',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AttendancePage()));
-              },
-            ),
-            _buildSidebarTile(
-              icon: Icons.badge,
-              title: 'Staff',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StaffPage()));
-              },
-            ),
-            _buildSidebarTile(
-              icon: Icons.payment,
-              title: 'Payments',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentsPage()));
-              },
-            ),
-            _buildSidebarTile(
-              icon: Icons.event,
-              title: 'Event Planner',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EventsPage()));
-              },
-            ),
-            _buildSidebarTile(icon: Icons.receipt_long, title: 'Fee Plans', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FeePlanPage()));
-            }),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-              onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
-            ),
-            const Spacer(),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSidebarTile({required IconData icon, required String title, required VoidCallback onTap, bool isSelected = false}) {
-    return ListTile(
-      leading: Icon(icon, color: isSelected ? const Color(0xFF2D6A4F) : Colors.grey[600]),
-      title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? const Color(0xFF2D6A4F) : Colors.grey[600])),
-      tileColor: isSelected ? const Color(0xFF2D6A4F).withValues(alpha: 0.08) : null,
-      onTap: onTap,
     );
   }
 }

@@ -4,12 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../database_helper.dart';
-import 'dashboard.dart';
-import 'member.dart';
-import 'payments.dart';
-import 'events.dart';
-import 'feeplan.dart';
-import 'attendance.dart';
+import 'sidebar.dart';
 
 class StaffPage extends StatefulWidget {
   const StaffPage({super.key});
@@ -47,7 +42,7 @@ class _StaffPageState extends State<StaffPage> {
         iconTheme: const IconThemeData(color: Colors.black),
         title: const Text('Staff Management', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
-      drawer: _buildSidebar(context),
+      drawer: const AppSidebar(currentPage: 'Staff'),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _staffList.isEmpty
@@ -189,82 +184,6 @@ class _StaffPageState extends State<StaffPage> {
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
       ),
-    );
-  }
-
-  Widget _buildSidebar(BuildContext context) {
-    return Drawer(
-      child: Container(
-        color: Colors.white,
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF2D6A4F)),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(2.0),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 40),
-                    ),
-                  ),
-                ),
-              ),
-              accountName: const Text('Kartikey Gym', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              accountEmail: const Text('admin@kartikeygym.com'),
-            ),
-            _buildSidebarTile(icon: Icons.grid_view, title: 'Dashboard', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardPage()));
-            }),
-            _buildSidebarTile(icon: Icons.people, title: 'Members List', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MemberPage()));
-            }),
-            _buildSidebarTile(
-              icon: Icons.how_to_reg,
-              title: 'Attendance',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AttendancePage()));
-              },
-            ),
-            _buildSidebarTile(icon: Icons.badge, title: 'Staff', isSelected: true, onTap: () => Navigator.pop(context)),
-            _buildSidebarTile(icon: Icons.payment, title: 'Payments', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentsPage()));
-            }),
-            _buildSidebarTile(icon: Icons.event, title: 'Event Planner', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EventsPage()));
-            }),
-            _buildSidebarTile(icon: Icons.receipt_long, title: 'Fee Plans', onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FeePlanPage()));
-            }),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-              onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
-            ),
-            const Spacer(),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSidebarTile({required IconData icon, required String title, required VoidCallback onTap, bool isSelected = false}) {
-    return ListTile(
-      leading: Icon(icon, color: isSelected ? const Color(0xFF2D6A4F) : Colors.grey[600]),
-      title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? const Color(0xFF2D6A4F) : Colors.grey[600])),
-      tileColor: isSelected ? const Color(0xFF2D6A4F).withValues(alpha: 0.08) : null,
-      onTap: onTap,
     );
   }
 }

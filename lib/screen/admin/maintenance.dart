@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../database_helper.dart';
+import '../../services/firebase_service.dart';
 import 'sidebar.dart';
 
 class MaintenancePage extends StatefulWidget {
@@ -23,7 +23,7 @@ class _MaintenancePageState extends State<MaintenancePage> {
 
   Future<void> _refreshRecords() async {
     setState(() => _isLoading = true);
-    final data = await DatabaseHelper.instance.queryAllMaintenance();
+    final data = await FirebaseService.instance.getAllMaintenance();
     setState(() {
       _records = data;
       _isLoading = false;
@@ -171,8 +171,8 @@ class _MaintenancePageState extends State<MaintenancePage> {
     );
   }
 
-  Future<void> _deleteRecord(int id) async {
-    await DatabaseHelper.instance.deleteMaintenance(id);
+  Future<void> _deleteRecord(String id) async {
+    await FirebaseService.instance.deleteMaintenance(id);
     _refreshRecords();
   }
 
@@ -221,7 +221,7 @@ class _MaintenancePageState extends State<MaintenancePage> {
                 updated['repairedBy'] = techController.text;
                 updated['partsUsed'] = partsController.text;
                 updated['cost'] = double.tryParse(costController.text) ?? 0.0;
-                await DatabaseHelper.instance.updateMaintenance(updated);
+                await FirebaseService.instance.updateMaintenance(updated);
                 Navigator.pop(context);
                 _refreshRecords();
               },
@@ -306,7 +306,7 @@ class _AddMaintenanceDialogState extends State<AddMaintenanceDialog> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              await DatabaseHelper.instance.insertMaintenance({
+              await FirebaseService.instance.addMaintenance({
                 'equipmentName': _equipController.text,
                 'category': _selectedCategory,
                 'serviceType': _selectedService,

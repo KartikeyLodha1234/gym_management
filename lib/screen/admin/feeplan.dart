@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'sidebar.dart';
 import 'plan_data.dart';
-import '../../database_helper.dart';
+import '../../services/firebase_service.dart';
 
 class FeePlanPage extends StatefulWidget {
   const FeePlanPage({super.key});
@@ -22,12 +22,12 @@ class _FeePlanPageState extends State<FeePlanPage> {
 
   Future<void> _refreshPlans() async {
     setState(() => _isLoading = true);
-    final data = await DatabaseHelper.instance.queryAllPlans();
+    final data = await FirebaseService.instance.getAllPlans();
     
     // If no plans in DB, migrate initial plans from PlanData
     if (data.isEmpty) {
       for (var plan in PlanData.plans) {
-        await DatabaseHelper.instance.insertPlan({
+        await FirebaseService.instance.addPlan({
           'name': plan['name'],
           'price': plan['price'],
           'duration': plan['duration'],
@@ -35,7 +35,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
           'color': (plan['color'] as Color).value,
         });
       }
-      final newData = await DatabaseHelper.instance.queryAllPlans();
+      final newData = await FirebaseService.instance.getAllPlans();
       setState(() {
         _plans = newData;
         _isLoading = false;
@@ -48,16 +48,16 @@ class _FeePlanPageState extends State<FeePlanPage> {
     }
   }
 
-  Future<void> _addOrUpdatePlan(Map<String, dynamic> planData, {int? id}) async {
+  Future<void> _addOrUpdatePlan(Map<String, dynamic> planData, {String? id}) async {
     if (id != null) {
-      await DatabaseHelper.instance.updatePlan(planData);
+      await FirebaseService.instance.updatePlan(planData);
     } else {
-      await DatabaseHelper.instance.insertPlan(planData);
+      await FirebaseService.instance.addPlan(planData);
     }
     _refreshPlans();
   }
 
-  void _deletePlan(int id) {
+  void _deletePlan(String id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -67,7 +67,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
-              await DatabaseHelper.instance.deletePlan(id);
+              await FirebaseService.instance.deletePlan(id);
               Navigator.pop(context);
               _refreshPlans();
             },
@@ -220,7 +220,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
                       label: const Text('Edit', style: TextStyle(color: Colors.blue)),
                     ),
                     TextButton.icon(
-                      onPressed: () => _deletePlan(plan['id']),
+                      onPressed: () => _deletePlan(plan['id'].toString()),
                       icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                       label: const Text('Delete', style: TextStyle(color: Colors.red)),
                     ),

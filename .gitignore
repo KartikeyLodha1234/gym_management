@@ -1,6 +1,18 @@
+# Firebase security
+android/app/google-services.json
+
+# Flutter/Dart
 build/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
+.pub/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr

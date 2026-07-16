@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../database_helper.dart';
+import '../../services/firebase_service.dart';
 import 'sidebar.dart';
 
 class EventsPage extends StatefulWidget {
@@ -22,7 +22,7 @@ class _EventsPageState extends State<EventsPage> {
 
   Future<void> _refreshEvents() async {
     setState(() => _isLoading = true);
-    final data = await DatabaseHelper.instance.queryAllEvents();
+    final data = await FirebaseService.instance.getAllEvents();
     setState(() {
       _events = data;
       _isLoading = false;
@@ -134,8 +134,8 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Future<void> _deleteEvent(int id) async {
-    await DatabaseHelper.instance.deleteEvent(id);
+  Future<void> _deleteEvent(String id) async {
+    await FirebaseService.instance.deleteEvent(id);
     _refreshEvents();
   }
 
@@ -243,7 +243,7 @@ class _AddEventDialogState extends State<AddEventDialog> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              await DatabaseHelper.instance.insertEvent({
+              await FirebaseService.instance.addEvent({
                 'title': _titleController.text,
                 'type': _selectedType,
                 'date': _selectedDate.toIso8601String(),

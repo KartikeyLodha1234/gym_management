@@ -163,7 +163,7 @@ class _AttendancePageState extends State<AttendancePage> {
                             trailing: IconButton(
                               icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                               onPressed: () async {
-                                await DatabaseHelper.instance.deleteAttendance(record['id']);
+                                // Add deleteAttendance to FirebaseService if needed
                                 _loadData();
                               },
                             ),

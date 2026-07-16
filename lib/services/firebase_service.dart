@@ -23,7 +23,7 @@ class FirebaseService {
 
   // --- Member Methods ---
   Future<void> addMember(Map<String, dynamic> memberData) async {
-    if (memberData['imagePath'] != null) {
+    if (memberData['imagePath'] != null && !memberData['imagePath'].startsWith('http')) {
       File file = File(memberData['imagePath']);
       String fileName = 'members/${DateTime.now().millisecondsSinceEpoch}.jpg';
       TaskSnapshot snapshot = await _storage.ref().child(fileName).putFile(file);
@@ -80,6 +80,10 @@ class FirebaseService {
     }).toList();
   }
 
+  Future<void> deletePayment(String id) async {
+    await _db.collection('payments').doc(id).delete();
+  }
+
   // --- Attendance Methods ---
   Future<void> addAttendance(Map<String, dynamic> attendanceData) async {
     await _db.collection('attendance').add(attendanceData);
@@ -98,8 +102,58 @@ class FirebaseService {
     await _db.collection('maintenance').add(data);
   }
 
+  Future<void> updateMaintenance(Map<String, dynamic> data) async {
+    String id = data['id'];
+    data.remove('id');
+    await _db.collection('maintenance').doc(id).update(data);
+  }
+
+  Future<void> deleteMaintenance(String id) async {
+    await _db.collection('maintenance').doc(id).delete();
+  }
+
   Future<List<Map<String, dynamic>>> getAllMaintenance() async {
     QuerySnapshot snapshot = await _db.collection('maintenance').get();
+    return snapshot.docs.map((doc) => {
+      'id': doc.id,
+      ...doc.data() as Map<String, dynamic>,
+    }).toList();
+  }
+
+  // --- Event Methods ---
+  Future<void> addEvent(Map<String, dynamic> data) async {
+    await _db.collection('events').add(data);
+  }
+
+  Future<void> deleteEvent(String id) async {
+    await _db.collection('events').doc(id).delete();
+  }
+
+  Future<List<Map<String, dynamic>>> getAllEvents() async {
+    QuerySnapshot snapshot = await _db.collection('events').get();
+    return snapshot.docs.map((doc) => {
+      'id': doc.id,
+      ...doc.data() as Map<String, dynamic>,
+    }).toList();
+  }
+
+  // --- Plan Methods ---
+  Future<void> addPlan(Map<String, dynamic> data) async {
+    await _db.collection('plans').add(data);
+  }
+
+  Future<void> updatePlan(Map<String, dynamic> data) async {
+    String id = data['id'];
+    data.remove('id');
+    await _db.collection('plans').doc(id).update(data);
+  }
+
+  Future<void> deletePlan(String id) async {
+    await _db.collection('plans').doc(id).delete();
+  }
+
+  Future<List<Map<String, dynamic>>> getAllPlans() async {
+    QuerySnapshot snapshot = await _db.collection('plans').get();
     return snapshot.docs.map((doc) => {
       'id': doc.id,
       ...doc.data() as Map<String, dynamic>,

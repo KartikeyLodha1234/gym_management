@@ -272,7 +272,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                       child: Text(p['status'], style: TextStyle(color: p['status'] == 'Paid' ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
                     )),
                     DataCell(IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () async {
-                      await DatabaseHelper.instance.deletePayment(p['id']);
+                      await FirebaseService.instance.deletePayment(p['id']);
                       _loadData();
                     })),
                   ])).toList(),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'member.dart';
+import 'feeplan.dart';
+import 'payments.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -16,12 +18,6 @@ class DashboardPage extends StatelessWidget {
           'Kartikey Gym',
           style: TextStyle(color: Color(0xFF2D6A4F), fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () {},
-          ),
-        ],
       ),
       drawer: _buildSidebar(context),
       body: SingleChildScrollView(
@@ -105,6 +101,9 @@ class DashboardPage extends StatelessWidget {
               ),
               accountName: const Text('Kartikey Gym', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               accountEmail: const Text('admin@kartikeygym.com'),
+              onDetailsPressed: () {
+                // Show Logout or Profile options
+              },
             ),
             _buildSidebarTile(
               icon: Icons.grid_view,
@@ -120,12 +119,29 @@ class DashboardPage extends StatelessWidget {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const MemberPage()));
               },
             ),
-            const Spacer(),
+            _buildSidebarTile(
+              icon: Icons.payment,
+              title: 'Payments',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentsPage()));
+              },
+            ),
+            _buildSidebarTile(
+              icon: Icons.receipt_long,
+              title: 'Fee Plans',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const FeePlanPage()));
+              },
+            ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
               onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
             ),
+            const Spacer(),
             const SizedBox(height: 10),
           ],
         ),

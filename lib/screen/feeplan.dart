@@ -4,6 +4,7 @@ import 'member.dart';
 import 'plan_data.dart';
 import 'payments.dart';
 import 'events.dart';
+import 'staff.dart';
 
 class FeePlanPage extends StatefulWidget {
   const FeePlanPage({super.key});
@@ -235,6 +236,14 @@ class _FeePlanPageState extends State<FeePlanPage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MemberPage()));
+              },
+            ),
+            _buildSidebarTile(
+              icon: Icons.badge,
+              title: 'Staff',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StaffPage()));
               },
             ),
             _buildSidebarTile(

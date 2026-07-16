@@ -10,9 +10,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dashboard.dart';
 import 'feeplan.dart';
+import 'feeplan.dart';
 import 'plan_data.dart';
 import 'payments.dart';
 import 'events.dart';
+import 'staff.dart';
 import '../database_helper.dart';
 
 class MemberPage extends StatefulWidget {
@@ -423,6 +425,14 @@ class _MemberPageState extends State<MemberPage> {
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardPage()));
             }),
             _buildSidebarTile(icon: Icons.people, title: 'Members List', isSelected: true, onTap: () => Navigator.pop(context)),
+            _buildSidebarTile(
+              icon: Icons.badge,
+              title: 'Staff',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StaffPage()));
+              },
+            ),
             _buildSidebarTile(
               icon: Icons.payment,
               title: 'Payments',

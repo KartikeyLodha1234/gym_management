@@ -3,6 +3,7 @@ import 'member.dart';
 import 'feeplan.dart';
 import 'payments.dart';
 import 'events.dart';
+import 'staff.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -118,6 +119,14 @@ class DashboardPage extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const MemberPage()));
+              },
+            ),
+            _buildSidebarTile(
+              icon: Icons.badge,
+              title: 'Staff',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StaffPage()));
               },
             ),
             _buildSidebarTile(

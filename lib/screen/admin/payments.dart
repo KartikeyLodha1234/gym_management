@@ -8,7 +8,7 @@ import 'package:excel/excel.dart' hide Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'sidebar.dart';
-import '../../database_helper.dart';
+import '../../services/firebase_service.dart';
 
 class PaymentsPage extends StatefulWidget {
   const PaymentsPage({super.key});
@@ -54,8 +54,8 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   Future<void> _loadData() async {
-    final members = await DatabaseHelper.instance.queryAllMembers();
-    final payments = await DatabaseHelper.instance.queryAllPayments();
+    final members = await FirebaseService.instance.getAllMembers();
+    final payments = await FirebaseService.instance.getAllPayments();
     setState(() {
       _allMembers = members;
       _allPayments = payments;
@@ -68,7 +68,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
       _memberName = member['name'];
       _memberId = member['id'].toString();
       _membershipPlan = member['plan'];
-      _expiryDate = DateTime.parse(member['expiryDate']);
+      _expiryDate = member['expiryDate'] is String ? DateTime.parse(member['expiryDate']) : member['expiryDate'];
       _priceController.text = member['price'].toString().replaceAll(',', '');
     });
   }
@@ -76,7 +76,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
   Future<void> _processPayment() async {
     if (_formKey.currentState!.validate()) {
       final paymentData = {
-        'memberId': int.tryParse(_memberId),
+        'memberId': _memberId,
         'memberName': _memberName,
         'plan': _membershipPlan,
         'price': _subtotal,
@@ -88,7 +88,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
         'status': 'Paid'
       };
 
-      await DatabaseHelper.instance.insertPayment(paymentData);
+      await FirebaseService.instance.addPayment(paymentData);
       _loadData();
       _showSuccessDialog();
     }

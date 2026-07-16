@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import '../../database_helper.dart';
+import '../../services/firebase_service.dart';
 import 'sidebar.dart';
 import 'events.dart';
 
@@ -27,19 +27,24 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
-    final members = await DatabaseHelper.instance.queryAllMembers();
-    final events = await DatabaseHelper.instance.queryAllEvents();
-    final staff = await DatabaseHelper.instance.queryAllStaff();
-    
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    
-    setState(() {
-      _totalMembers = members.length;
-      _activeMembers = members.where((m) => m['status'] == 'Active').length;
-      _totalStaff = staff.length;
-      _todayEvents = events.where((e) => e['date'].startsWith(today)).toList();
-      _isLoading = false;
-    });
+    try {
+      final members = await FirebaseService.instance.getAllMembers();
+      // For now we don't have getAllEvents in FirebaseService yet, adding it.
+      // Finalizing FirebaseService first.
+      
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      
+      setState(() {
+        _totalMembers = members.length;
+        _activeMembers = members.where((m) => m['status'] == 'Active').length;
+        // Mocking staff and events for now until Service is full
+        _totalStaff = 0; 
+        _todayEvents = [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override

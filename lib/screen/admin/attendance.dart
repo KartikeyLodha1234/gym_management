@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../database_helper.dart';
+import '../../services/firebase_service.dart';
 import 'sidebar.dart';
 
 class AttendancePage extends StatefulWidget {
@@ -24,9 +24,9 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final members = await DatabaseHelper.instance.queryAllMembers();
+    final members = await FirebaseService.instance.getAllMembers();
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final attendance = await DatabaseHelper.instance.queryAttendanceByDate(dateStr);
+    final attendance = await FirebaseService.instance.getAttendanceByDate(dateStr);
     setState(() {
       _allMembers = members;
       _attendanceList = attendance;
@@ -57,7 +57,7 @@ class _AttendancePageState extends State<AttendancePage> {
       'status': 'Present'
     };
 
-    await DatabaseHelper.instance.insertAttendance(attendanceData);
+    await FirebaseService.instance.addAttendance(attendanceData);
     _loadData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -7,6 +7,7 @@ import 'payments.dart';
 import 'events.dart';
 import 'feeplan.dart';
 import 'userprofile.dart';
+import 'maintenance.dart';
 
 class AppSidebar extends StatelessWidget {
   final String currentPage;
@@ -102,6 +103,19 @@ class AppSidebar extends StatelessWidget {
                     onTap: () {
                       if (currentPage != 'Payments') {
                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentsPage()));
+                      } else {
+                        Navigator.pop(context);
+                      }
+                    },
+                  ),
+                  _buildSidebarTile(
+                    context: context,
+                    icon: Icons.build,
+                    title: 'Maintenance',
+                    isSelected: currentPage == 'Maintenance',
+                    onTap: () {
+                      if (currentPage != 'Maintenance') {
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MaintenancePage()));
                       } else {
                         Navigator.pop(context);
                       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'sidebar.dart';
 import 'plan_data.dart';
+import '../../database_helper.dart';
 
 class FeePlanPage extends StatefulWidget {
   const FeePlanPage({super.key});
@@ -10,17 +11,53 @@ class FeePlanPage extends StatefulWidget {
 }
 
 class _FeePlanPageState extends State<FeePlanPage> {
-  void _addOrUpdatePlan(Map<String, dynamic> plan, {int? index}) {
-    setState(() {
-      if (index != null) {
-        PlanData.plans[index] = plan;
-      } else {
-        PlanData.plans.add(plan);
-      }
-    });
+  List<Map<String, dynamic>> _plans = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshPlans();
   }
 
-  void _deletePlan(int index) {
+  Future<void> _refreshPlans() async {
+    setState(() => _isLoading = true);
+    final data = await DatabaseHelper.instance.queryAllPlans();
+    
+    // If no plans in DB, migrate initial plans from PlanData
+    if (data.isEmpty) {
+      for (var plan in PlanData.plans) {
+        await DatabaseHelper.instance.insertPlan({
+          'name': plan['name'],
+          'price': plan['price'],
+          'duration': plan['duration'],
+          'features': (plan['features'] as List<String>).join(','),
+          'color': (plan['color'] as Color).value,
+        });
+      }
+      final newData = await DatabaseHelper.instance.queryAllPlans();
+      setState(() {
+        _plans = newData;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _plans = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addOrUpdatePlan(Map<String, dynamic> planData, {int? id}) async {
+    if (id != null) {
+      await DatabaseHelper.instance.updatePlan(planData);
+    } else {
+      await DatabaseHelper.instance.insertPlan(planData);
+    }
+    _refreshPlans();
+  }
+
+  void _deletePlan(int id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -29,9 +66,10 @@ class _FeePlanPageState extends State<FeePlanPage> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
-            onPressed: () {
-              setState(() => PlanData.plans.removeAt(index));
+            onPressed: () async {
+              await DatabaseHelper.instance.deletePlan(id);
               Navigator.pop(context);
+              _refreshPlans();
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
@@ -54,7 +92,9 @@ class _FeePlanPageState extends State<FeePlanPage> {
         ),
       ),
       drawer: const AppSidebar(currentPage: 'Fee Plans'),
-      body: SingleChildScrollView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,10 +112,10 @@ class _FeePlanPageState extends State<FeePlanPage> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: PlanData.plans.length,
+              itemCount: _plans.length,
               itemBuilder: (context, index) {
-                final plan = PlanData.plans[index];
-                return _buildPlanCard(plan, index);
+                final plan = _plans[index];
+                return _buildPlanCard(plan);
               },
             ),
           ],
@@ -89,21 +129,22 @@ class _FeePlanPageState extends State<FeePlanPage> {
     );
   }
 
-  void _showPlanDialog({Map<String, dynamic>? plan, int? index}) {
+  void _showPlanDialog({Map<String, dynamic>? plan}) {
     showDialog(
       context: context,
       builder: (context) => PlanDialog(
         plan: plan,
-        onSave: (newPlan) => _addOrUpdatePlan(newPlan, index: index),
+        onSave: (newData) => _addOrUpdatePlan(newData, id: plan?['id']),
       ),
     );
   }
 
   void _showViewDialog(Map<String, dynamic> plan) {
+    List<String> features = (plan['features'] as String).split(',');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(plan['name'], style: TextStyle(color: plan['color'], fontWeight: FontWeight.bold)),
+        title: Text(plan['name'], style: TextStyle(color: Color(plan['color']), fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +153,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
             Text('Duration: ${plan['duration']}', style: const TextStyle(color: Colors.grey)),
             const SizedBox(height: 15),
             const Text('Features:', style: TextStyle(fontWeight: FontWeight.bold)),
-            ...(plan['features'] as List<String>).map((f) => Text('• $f')),
+            ...features.map((f) => Text('• $f')),
           ],
         ),
         actions: [
@@ -122,7 +163,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
     );
   }
 
-  Widget _buildPlanCard(Map<String, dynamic> plan, int index) {
+  Widget _buildPlanCard(Map<String, dynamic> plan) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -141,7 +182,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             decoration: BoxDecoration(
-              color: plan['color'],
+              color: Color(plan['color']),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(15),
                 topRight: Radius.circular(15),
@@ -174,12 +215,12 @@ class _FeePlanPageState extends State<FeePlanPage> {
                       label: const Text('View'),
                     ),
                     TextButton.icon(
-                      onPressed: () => _showPlanDialog(plan: plan, index: index),
+                      onPressed: () => _showPlanDialog(plan: plan),
                       icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
                       label: const Text('Edit', style: TextStyle(color: Colors.blue)),
                     ),
                     TextButton.icon(
-                      onPressed: () => _deletePlan(index),
+                      onPressed: () => _deletePlan(plan['id']),
                       icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                       label: const Text('Delete', style: TextStyle(color: Colors.red)),
                     ),
@@ -217,7 +258,7 @@ class _PlanDialogState extends State<PlanDialog> {
     _nameController = TextEditingController(text: widget.plan?['name'] ?? '');
     _priceController = TextEditingController(text: widget.plan?['price'] ?? '');
     _durationController = TextEditingController(text: widget.plan?['duration'] ?? '');
-    _featuresController = TextEditingController(text: (widget.plan?['features'] as List<String>?)?.join(', ') ?? '');
+    _featuresController = TextEditingController(text: widget.plan?['features'] ?? '');
   }
 
   @override
@@ -262,11 +303,12 @@ class _PlanDialogState extends State<PlanDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               widget.onSave({
+                if (widget.plan != null) 'id': widget.plan!['id'],
                 'name': _nameController.text,
                 'price': _priceController.text,
                 'duration': _durationController.text,
-                'features': _featuresController.text.split(',').map((e) => e.trim()).toList(),
-                'color': widget.plan?['color'] ?? const Color(0xFF2D6A4F),
+                'features': _featuresController.text,
+                'color': widget.plan?['color'] ?? const Color(0xFF2D6A4F).value,
               });
               Navigator.pop(context);
             }

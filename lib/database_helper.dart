@@ -19,32 +19,26 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7, // Incremented for attendance table
+      version: 8, // Incremented for maintenance and plans tables
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await _createPaymentsTable(db);
-    }
+    if (oldVersion < 2) await _createPaymentsTable(db);
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE members ADD COLUMN email TEXT');
       await db.execute('ALTER TABLE members ADD COLUMN password TEXT');
       await db.execute('ALTER TABLE members ADD COLUMN dob TEXT');
     }
-    if (oldVersion < 4) {
-      await _createEventsTable(db);
-    }
-    if (oldVersion < 5) {
-      await _createStaffTable(db);
-    }
-    if (oldVersion < 6) {
-      await db.execute('ALTER TABLE staff ADD COLUMN imagePath TEXT');
-    }
-    if (oldVersion < 7) {
-      await _createAttendanceTable(db);
+    if (oldVersion < 4) await _createEventsTable(db);
+    if (oldVersion < 5) await _createStaffTable(db);
+    if (oldVersion < 6) await db.execute('ALTER TABLE staff ADD COLUMN imagePath TEXT');
+    if (oldVersion < 7) await _createAttendanceTable(db);
+    if (oldVersion < 8) {
+      await _createMaintenanceTable(db);
+      await _createPlansTable(db);
     }
   }
 
@@ -73,6 +67,8 @@ class DatabaseHelper {
     await _createEventsTable(db);
     await _createStaffTable(db);
     await _createAttendanceTable(db);
+    await _createMaintenanceTable(db);
+    await _createPlansTable(db);
   }
 
   Future _createPaymentsTable(Database db) async {
@@ -135,6 +131,32 @@ class DatabaseHelper {
     ''');
   }
 
+  Future _createMaintenanceTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE maintenance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        cost REAL,
+        date TEXT NOT NULL,
+        category TEXT
+      )
+    ''');
+  }
+
+  Future _createPlansTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        price TEXT NOT NULL,
+        duration TEXT NOT NULL,
+        features TEXT,
+        color INTEGER
+      )
+    ''');
+  }
+
   // Member Methods
   Future<int> insertMember(Map<String, dynamic> member) async {
     final db = await instance.database;
@@ -149,21 +171,12 @@ class DatabaseHelper {
   Future<int> updateMember(Map<String, dynamic> member) async {
     final db = await instance.database;
     int id = member['id'];
-    return await db.update(
-      'members',
-      member,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.update('members', member, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deleteMember(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'members',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('members', where: 'id = ?', whereArgs: [id]);
   }
 
   // Payment Methods
@@ -207,12 +220,7 @@ class DatabaseHelper {
   Future<int> updateStaff(Map<String, dynamic> staff) async {
     final db = await instance.database;
     int id = staff['id'];
-    return await db.update(
-      'staff',
-      staff,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.update('staff', staff, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deleteStaff(int id) async {
@@ -239,5 +247,43 @@ class DatabaseHelper {
   Future<int> deleteAttendance(int id) async {
     final db = await instance.database;
     return await db.delete('attendance', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Maintenance Methods
+  Future<int> insertMaintenance(Map<String, dynamic> record) async {
+    final db = await instance.database;
+    return await db.insert('maintenance', record);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllMaintenance() async {
+    final db = await instance.database;
+    return await db.query('maintenance', orderBy: 'date DESC');
+  }
+
+  Future<int> deleteMaintenance(int id) async {
+    final db = await instance.database;
+    return await db.delete('maintenance', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Plan Methods
+  Future<int> insertPlan(Map<String, dynamic> plan) async {
+    final db = await instance.database;
+    return await db.insert('plans', plan);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllPlans() async {
+    final db = await instance.database;
+    return await db.query('plans');
+  }
+
+  Future<int> updatePlan(Map<String, dynamic> plan) async {
+    final db = await instance.database;
+    int id = plan['id'];
+    return await db.update('plans', plan, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deletePlan(int id) async {
+    final db = await instance.database;
+    return await db.delete('plans', where: 'id = ?', whereArgs: [id]);
   }
 }

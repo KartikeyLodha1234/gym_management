@@ -21,20 +21,22 @@ class MemberPage extends StatefulWidget {
 
 class _MemberPageState extends State<MemberPage> {
   final List<Map<String, dynamic>> _members = [];
+  List<Map<String, dynamic>> _plans = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _refreshMembers();
+    _refreshData();
   }
 
-  Future<void> _refreshMembers() async {
-    final data = await DatabaseHelper.instance.queryAllMembers();
+  Future<void> _refreshData() async {
+    final memberData = await DatabaseHelper.instance.queryAllMembers();
+    final planData = await DatabaseHelper.instance.queryAllPlans();
     setState(() {
       _members.clear();
-      for (var item in data) {
+      for (var item in memberData) {
         final member = Map<String, dynamic>.from(item);
         member['joinDate'] = DateTime.parse(member['joinDate']);
         member['expiryDate'] = DateTime.parse(member['expiryDate']);
@@ -43,7 +45,12 @@ class _MemberPageState extends State<MemberPage> {
         }
         _members.add(member);
       }
+      _plans = planData;
     });
+  }
+
+  Future<void> _refreshMembers() async {
+    _refreshData();
   }
 
   Future<void> _addMember(Map<String, dynamic> member) async {
@@ -329,6 +336,7 @@ class _MemberPageState extends State<MemberPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AddMemberDialog(
+        plans: _plans,
         member: member,
         onSave: _updateMember,
       ),
@@ -379,6 +387,7 @@ class _MemberPageState extends State<MemberPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AddMemberDialog(
+        plans: _plans,
         nextId: _members.isEmpty ? 1 : _members.map((m) => m['id'] as int).reduce((a, b) => a > b ? a : b) + 1,
         onSave: _addMember,
       ),
@@ -388,10 +397,11 @@ class _MemberPageState extends State<MemberPage> {
 
 class AddMemberDialog extends StatefulWidget {
   final int? nextId;
+  final List<Map<String, dynamic>> plans;
   final Map<String, dynamic>? member;
   final Function(Map<String, dynamic>) onSave;
 
-  const AddMemberDialog({super.key, this.nextId, this.member, required this.onSave});
+  const AddMemberDialog({super.key, this.nextId, required this.plans, this.member, required this.onSave});
 
   @override
   State<AddMemberDialog> createState() => _AddMemberDialogState();
@@ -411,30 +421,33 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
   DateTime _dob = DateTime.now().subtract(const Duration(days: 365 * 18));
   DateTime _joinDate = DateTime.now();
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 30));
-  String _plan = PlanData.plans.isNotEmpty ? PlanData.plans[0]['name'] : '1 Month';
+  String _plan = '1 Month';
   String _gender = 'Male';
   File? _image;
 
   @override
   void initState() {
     super.initState();
+    if (widget.plans.isNotEmpty) {
+      _plan = widget.member != null ? widget.member!['plan'] : widget.plans[0]['name'];
+    }
     if (widget.member != null) {
       _nameController.text = widget.member!['name'];
       _mobileController.text = widget.member!['mobile'].replaceAll('+91 ', '');
       _emailController.text = widget.member!['email'] ?? '';
       _emergencyController.text = widget.member!['emergency'].replaceAll('+91 ', '');
       _gender = widget.member!['gender'];
-      _dob = widget.member!['dob'] ?? DateTime.now().subtract(const Duration(days: 365 * 18));
+      _dob = widget.member!['dob'] != null ? DateTime.parse(widget.member!['dob']) : DateTime.now().subtract(const Duration(days: 365 * 18));
       _joinDate = widget.member!['joinDate'];
-      _plan = widget.member!['plan'];
       _priceController.text = widget.member!['price'];
       _expiryDate = widget.member!['expiryDate'];
       _trainerController.text = widget.member!['trainer'];
+      _passwordController.text = widget.member!['password'] ?? '';
       if (widget.member!['imagePath'] != null) {
         _image = File(widget.member!['imagePath']);
       }
-    } else if (PlanData.plans.isNotEmpty) {
-      final initialPlan = PlanData.plans.firstWhere((p) => p['name'] == _plan);
+    } else if (widget.plans.isNotEmpty) {
+      final initialPlan = widget.plans.firstWhere((p) => p['name'] == _plan, orElse: () => widget.plans[0]);
       _priceController.text = (initialPlan['price'] as String).replaceAll(',', '');
     }
   }
@@ -515,7 +528,42 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 }),
                 const SizedBox(height: 15),
                 TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Mail ID', border: OutlineInputBorder(), prefixIcon: Icon(Icons.email)), keyboardType: TextInputType.emailAddress, validator: (v) => v!.isEmpty ? 'Enter email' : null),
-                if (widget.member == null) ...[
+                if (widget.member != null) ...[
+                  const SizedBox(height: 15),
+                  TextButton.icon(
+                    icon: const Icon(Icons.lock_reset, color: Color(0xFF2D6A4F)),
+                    label: const Text('Change Password', style: TextStyle(color: Color(0xFF2D6A4F), fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      final newPassController = TextEditingController();
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Change Password'),
+                          content: TextField(
+                            controller: newPassController,
+                            decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+                            obscureText: true,
+                          ),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (newPassController.text.length >= 6) {
+                                  _passwordController.text = newPassController.text;
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated in form. Save to confirm.')));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Min 6 characters required')));
+                                }
+                              },
+                              child: const Text('Update'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ] else ...[
                   const SizedBox(height: 15),
                   TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)), obscureText: true, validator: (v) => v!.length < 6 ? 'Min 6 characters' : null),
                   const SizedBox(height: 15),
@@ -537,11 +585,11 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 const Divider(),
                 DropdownButtonFormField<String>(
                   value: _plan,
-                  items: PlanData.plans.map((p) => DropdownMenuItem(value: p['name'] as String, child: Text(p['name'] as String))).toList(),
+                  items: widget.plans.map((p) => DropdownMenuItem(value: p['name'] as String, child: Text(p['name'] as String))).toList(),
                   onChanged: (v) {
                     setState(() {
                       _plan = v!;
-                      final selectedPlan = PlanData.plans.firstWhere((p) => p['name'] == v);
+                      final selectedPlan = widget.plans.firstWhere((p) => p['name'] == v);
                       _priceController.text = (selectedPlan['price'] as String).replaceAll(',', '');
                       _updateExpiryDate();
                     });
@@ -598,7 +646,7 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
 
   void _updateExpiryDate() {
     setState(() {
-      final selectedPlan = PlanData.plans.firstWhere((p) => p['name'] == _plan);
+      final selectedPlan = widget.plans.firstWhere((p) => p['name'] == _plan);
       final durationStr = selectedPlan['duration'] as String;
       if (durationStr.contains('Month')) _expiryDate = _joinDate.add(Duration(days: 30 * int.parse(durationStr.split(' ')[0])));
       else if (durationStr.contains('Year')) _expiryDate = _joinDate.add(Duration(days: 365 * int.parse(durationStr.split(' ')[0])));

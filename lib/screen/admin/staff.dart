@@ -313,7 +313,45 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
                 const SizedBox(height: 15),
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock)),
+                  decoration: InputDecoration(
+                    labelText: 'Password', 
+                    border: const OutlineInputBorder(), 
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.lock_reset, color: Color(0xFF2D6A4F)),
+                      onPressed: () {
+                        final newPassController = TextEditingController();
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Change Password'),
+                            content: TextField(
+                              controller: newPassController,
+                              decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+                              obscureText: true,
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (newPassController.text.length >= 6) {
+                                    setState(() {
+                                      _passwordController.text = newPassController.text;
+                                    });
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated. Save to confirm.')));
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Min 6 characters')));
+                                  }
+                                },
+                                child: const Text('Update'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                   obscureText: true,
                   validator: (v) => v!.length < 6 ? 'Min 6 characters' : null,
                 ),

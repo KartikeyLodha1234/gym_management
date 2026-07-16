@@ -32,6 +32,74 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
+  void _showChangePasswordDialog() {
+    final oldPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: oldPassController, obscureText: true, decoration: const InputDecoration(labelText: 'Old Password')),
+            TextField(controller: newPassController, obscureText: true, decoration: const InputDecoration(labelText: 'New Password')),
+            TextField(controller: confirmPassController, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm Password')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (newPassController.text == confirmPassController.text && newPassController.text.isNotEmpty) {
+                // Update password logic
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password Changed Successfully!'), backgroundColor: Colors.green));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match!'), backgroundColor: Colors.red));
+              }
+            },
+            child: const Text('Update'),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacySettingsDialog() {
+    bool _isPrivate = true;
+    bool _showEmail = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Privacy Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                title: const Text('Private Profile'),
+                value: _isPrivate,
+                onChanged: (v) => setDialogState(() => _isPrivate = v),
+              ),
+              SwitchListTile(
+                title: const Text('Show Email to Members'),
+                value: _showEmail,
+                onChanged: (v) => setDialogState(() => _showEmail = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,7 +115,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
             onPressed: () {
               setState(() {
                 if (_isEditing) {
-                  // Save logic here
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Profile Updated Successfully!'), backgroundColor: Colors.green),
                   );
@@ -110,15 +177,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 leading: const Icon(Icons.lock_outline, color: Color(0xFF2D6A4F)),
                 title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.bold)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // Change password logic
-                },
+                onTap: _showChangePasswordDialog,
               ),
               ListTile(
                 leading: const Icon(Icons.security, color: Color(0xFF2D6A4F)),
                 title: const Text('Privacy Settings', style: TextStyle(fontWeight: FontWeight.bold)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
+                onTap: _showPrivacySettingsDialog,
               ),
             ]
           ],

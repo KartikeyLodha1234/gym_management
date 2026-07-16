@@ -51,10 +51,7 @@ class _MemberPageState extends State<MemberPage> {
     memberToSave['status'] = 'Active';
     memberToSave['joinDate'] = (memberToSave['joinDate'] as DateTime).toIso8601String();
     memberToSave['expiryDate'] = (memberToSave['expiryDate'] as DateTime).toIso8601String();
-    if (memberToSave['dob'] != null) {
-      memberToSave['dob'] = (memberToSave['dob'] as DateTime).toIso8601String();
-    }
-    memberToSave.remove('id');
+    // DOB is already a string here from the dialog logic
 
     await DatabaseHelper.instance.insertMember(memberToSave);
     _refreshMembers();

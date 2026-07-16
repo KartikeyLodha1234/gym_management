@@ -4,6 +4,7 @@ import 'member.dart';
 import 'plan_data.dart';
 import 'payments.dart';
 import 'events.dart';
+import 'attendance.dart';
 import 'staff.dart';
 
 class FeePlanPage extends StatefulWidget {
@@ -236,6 +237,14 @@ class _FeePlanPageState extends State<FeePlanPage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MemberPage()));
+              },
+            ),
+            _buildSidebarTile(
+              icon: Icons.how_to_reg,
+              title: 'Attendance',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AttendancePage()));
               },
             ),
             _buildSidebarTile(

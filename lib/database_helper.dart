@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // Incremented for staff table
+      version: 7, // Incremented for attendance table
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -39,6 +39,12 @@ class DatabaseHelper {
     }
     if (oldVersion < 5) {
       await _createStaffTable(db);
+    }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE staff ADD COLUMN imagePath TEXT');
+    }
+    if (oldVersion < 7) {
+      await _createAttendanceTable(db);
     }
   }
 
@@ -66,6 +72,7 @@ class DatabaseHelper {
     await _createPaymentsTable(db);
     await _createEventsTable(db);
     await _createStaffTable(db);
+    await _createAttendanceTable(db);
   }
 
   Future _createPaymentsTable(Database db) async {
@@ -109,7 +116,21 @@ class DatabaseHelper {
         email TEXT NOT NULL,
         password TEXT NOT NULL,
         phone TEXT,
-        joinDate TEXT
+        joinDate TEXT,
+        imagePath TEXT
+      )
+    ''');
+  }
+
+  Future _createAttendanceTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memberId INTEGER NOT NULL,
+        memberName TEXT NOT NULL,
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        status TEXT NOT NULL
       )
     ''');
   }
@@ -183,8 +204,40 @@ class DatabaseHelper {
     return await db.query('staff');
   }
 
+  Future<int> updateStaff(Map<String, dynamic> staff) async {
+    final db = await instance.database;
+    int id = staff['id'];
+    return await db.update(
+      'staff',
+      staff,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deleteStaff(int id) async {
     final db = await instance.database;
     return await db.delete('staff', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Attendance Methods
+  Future<int> insertAttendance(Map<String, dynamic> attendance) async {
+    final db = await instance.database;
+    return await db.insert('attendance', attendance);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAttendanceByDate(String date) async {
+    final db = await instance.database;
+    return await db.query('attendance', where: 'date = ?', whereArgs: [date]);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllAttendance() async {
+    final db = await instance.database;
+    return await db.query('attendance', orderBy: 'date DESC, time DESC');
+  }
+
+  Future<int> deleteAttendance(int id) async {
+    final db = await instance.database;
+    return await db.delete('attendance', where: 'id = ?', whereArgs: [id]);
   }
 }

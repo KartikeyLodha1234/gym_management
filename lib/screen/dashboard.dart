@@ -4,6 +4,7 @@ import 'feeplan.dart';
 import 'payments.dart';
 import 'events.dart';
 import 'staff.dart';
+import 'attendance.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -119,6 +120,14 @@ class DashboardPage extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const MemberPage()));
+              },
+            ),
+            _buildSidebarTile(
+              icon: Icons.how_to_reg,
+              title: 'Attendance',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AttendancePage()));
               },
             ),
             _buildSidebarTile(

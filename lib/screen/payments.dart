@@ -223,15 +223,17 @@ class _PaymentsPageState extends State<PaymentsPage> {
                       },
                     ),
                     const SizedBox(height: 15),
-                    _buildReadOnlyField('Member ID', _memberId),
+                    _buildReadOnlyField('Member Name', _memberName),
                     const SizedBox(height: 15),
                     Row(
                       children: [
-                        Expanded(child: _buildReadOnlyField('Plan', _membershipPlan)),
+                        Expanded(child: _buildReadOnlyField('Member ID', _memberId)),
                         const SizedBox(width: 10),
-                        Expanded(child: _buildReadOnlyField('Expiry Date', _memberId.isEmpty ? '' : DateFormat('dd MMM yyyy').format(_expiryDate))),
+                        Expanded(child: _buildReadOnlyField('Plan', _membershipPlan)),
                       ],
                     ),
+                    const SizedBox(height: 15),
+                    _buildReadOnlyField('Expiry Date', _memberId.isEmpty ? '' : DateFormat('dd MMM yyyy').format(_expiryDate)),
                     const SizedBox(height: 15),
                     TextFormField(
                       controller: _priceController,

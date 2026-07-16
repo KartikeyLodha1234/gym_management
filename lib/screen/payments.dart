@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dashboard.dart';
 import 'member.dart';
 import 'feeplan.dart';
+import 'events.dart';
 import '../database_helper.dart';
 
 class PaymentsPage extends StatefulWidget {
@@ -436,6 +437,14 @@ class _PaymentsPageState extends State<PaymentsPage> {
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MemberPage()));
             }),
             _buildSidebarTile(icon: Icons.payment, title: 'Payments', isSelected: true, onTap: () => Navigator.pop(context)),
+            _buildSidebarTile(
+              icon: Icons.event,
+              title: 'Event Planner',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EventsPage()));
+              },
+            ),
             _buildSidebarTile(icon: Icons.receipt_long, title: 'Fee Plans', onTap: () {
               Navigator.pop(context);
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FeePlanPage()));

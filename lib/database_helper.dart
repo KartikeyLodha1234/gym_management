@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // Incremented version for events table
+      version: 5, // Incremented for staff table
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -36,6 +36,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _createEventsTable(db);
+    }
+    if (oldVersion < 5) {
+      await _createStaffTable(db);
     }
   }
 
@@ -62,6 +65,7 @@ class DatabaseHelper {
     ''');
     await _createPaymentsTable(db);
     await _createEventsTable(db);
+    await _createStaffTable(db);
   }
 
   Future _createPaymentsTable(Database db) async {
@@ -92,6 +96,20 @@ class DatabaseHelper {
         time TEXT NOT NULL,
         schedule TEXT,
         description TEXT
+      )
+    ''');
+  }
+
+  Future _createStaffTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE staff (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        email TEXT NOT NULL,
+        password TEXT NOT NULL,
+        phone TEXT,
+        joinDate TEXT
       )
     ''');
   }
@@ -152,5 +170,21 @@ class DatabaseHelper {
   Future<int> deleteEvent(int id) async {
     final db = await instance.database;
     return await db.delete('events', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Staff Methods
+  Future<int> insertStaff(Map<String, dynamic> staff) async {
+    final db = await instance.database;
+    return await db.insert('staff', staff);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllStaff() async {
+    final db = await instance.database;
+    return await db.query('staff');
+  }
+
+  Future<int> deleteStaff(int id) async {
+    final db = await instance.database;
+    return await db.delete('staff', where: 'id = ?', whereArgs: [id]);
   }
 }

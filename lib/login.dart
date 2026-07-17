@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'services/auth_service.dart';
+import 'screen/transition_loading.dart';
 import 'screen/admin/dashboard.dart';
 import 'screen/staff/staff_dashboard.dart';
 import 'screen/customer/customer_dashboard.dart';
@@ -76,7 +77,10 @@ class _LoginPageState extends State<LoginPage> {
 
   void _navigateTo(Widget page) {
     setState(() => _isLoading = false);
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => page));
+    Navigator.pushReplacement(
+      context, 
+      MaterialPageRoute(builder: (context) => TransitionLoadingScreen(targetPage: page))
+    );
   }
 
   @override

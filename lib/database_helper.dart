@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 12, // Incremented for verification features
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -44,6 +44,22 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS maintenance');
       await _createMaintenanceTable(db);
       await _createInventoryTable(db);
+    }
+    if (oldVersion < 11) {
+      try {
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkOutTime TEXT');
+        await db.execute('ALTER TABLE attendance ADD COLUMN userType TEXT DEFAULT "Member"');
+      } catch (e) {}
+    }
+    if (oldVersion < 12) {
+      try {
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkInPhoto TEXT');
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkOutPhoto TEXT');
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkInLat REAL');
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkInLong REAL');
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkOutLat REAL');
+        await db.execute('ALTER TABLE attendance ADD COLUMN checkOutLong REAL');
+      } catch (e) {}
     }
   }
 
@@ -132,7 +148,15 @@ class DatabaseHelper {
         memberName TEXT NOT NULL,
         date TEXT NOT NULL,
         time TEXT NOT NULL,
-        status TEXT NOT NULL
+        checkOutTime TEXT,
+        userType TEXT DEFAULT "Member",
+        status TEXT NOT NULL,
+        checkInPhoto TEXT,
+        checkOutPhoto TEXT,
+        checkInLat REAL,
+        checkInLong REAL,
+        checkOutLat REAL,
+        checkOutLong REAL
       )
     ''');
   }
@@ -253,7 +277,19 @@ class DatabaseHelper {
   }
   Future<List<Map<String, dynamic>>> queryAttendanceByDate(String date) async {
     final db = await instance.database;
-    return await db.query('attendance', where: 'date = ?', whereArgs: [date]);
+    return await db.query('attendance', where: 'date = ? AND userType = "Member"', whereArgs: [date]);
+  }
+  Future<List<Map<String, dynamic>>> queryStaffAttendanceByDate(String date) async {
+    final db = await instance.database;
+    return await db.query('attendance', where: 'date = ? AND userType = "Staff"', whereArgs: [date]);
+  }
+  Future<int> updateAttendance(int id, Map<String, dynamic> values) async {
+    final db = await instance.database;
+    return await db.update('attendance', values, where: 'id = ?', whereArgs: [id]);
+  }
+  Future<int> updateCheckOutTime(int id, String checkOutTime) async {
+    final db = await instance.database;
+    return await db.update('attendance', {'checkOutTime': checkOutTime}, where: 'id = ?', whereArgs: [id]);
   }
   Future<int> deleteAttendance(int id) async {
     final db = await instance.database;

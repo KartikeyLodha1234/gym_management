@@ -1,7 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../database_helper.dart';
 import '../admin/sidebar.dart';
+import '../admin/member.dart';
+import '../admin/attendance.dart';
+import '../admin/maintenance.dart';
+import '../admin/events.dart';
 
 class StaffDashboard extends StatefulWidget {
   final String role;
@@ -18,6 +26,8 @@ class _StaffDashboardState extends State<StaffDashboard> {
   int _attendanceToday = 0;
   int _pendingMaintenance = 0;
   bool _isLoading = true;
+  bool _isStaffCheckedIn = false;
+  Map<String, dynamic>? _todayAttendanceRecord;
 
   @override
   void initState() {
@@ -32,16 +42,106 @@ class _StaffDashboardState extends State<StaffDashboard> {
       final maintenance = await DatabaseHelper.instance.queryAllMaintenance();
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final attendance = await DatabaseHelper.instance.queryAttendanceByDate(today);
+      
+      // Check current staff attendance
+      final staffAttendance = await DatabaseHelper.instance.queryStaffAttendanceByDate(today);
+      final myRecord = staffAttendance.cast<Map<String, dynamic>?>().firstWhere(
+        (a) => a!['memberId'].toString() == widget.userData['id'].toString() && a['checkOutTime'] == null,
+        orElse: () => null,
+      );
 
       setState(() {
         _memberCount = members.length;
         _attendanceToday = attendance.length;
         _pendingMaintenance = maintenance.where((m) => m['status'] == 'Pending').length;
+        _isStaffCheckedIn = myRecord != null;
+        _todayAttendanceRecord = myRecord;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<Position?> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location services are disabled.')));
+      return null;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are denied')));
+        return null;
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions are permanently denied.')));
+      return null;
+    } 
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  Future<String?> _capturePhoto(String prefix) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera, imageQuality: 50);
+    if (image == null) return null;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
+    return savedImage.path;
+  }
+
+  Future<void> _toggleStaffAttendance() async {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final now = DateFormat('hh:mm a').format(DateTime.now());
+
+    if (!_isStaffCheckedIn) {
+      // Check-in verification
+      final photoPath = await _capturePhoto('staff_in_${widget.userData['id']}');
+      if (photoPath == null) return;
+
+      final position = await _getCurrentLocation();
+      if (position == null) return;
+
+      await DatabaseHelper.instance.insertAttendance({
+        'memberId': widget.userData['id'],
+        'memberName': widget.userData['name'],
+        'date': today,
+        'time': now,
+        'userType': 'Staff',
+        'status': 'Present',
+        'checkInPhoto': photoPath,
+        'checkInLat': position.latitude,
+        'checkInLong': position.longitude,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Staff Checked-in with Photo & Location!'), backgroundColor: Colors.green));
+    } else {
+      // Check-out verification
+      final photoPath = await _capturePhoto('staff_out_${widget.userData['id']}');
+      if (photoPath == null) return;
+
+      final position = await _getCurrentLocation();
+      if (position == null) return;
+
+      await DatabaseHelper.instance.updateAttendance(_todayAttendanceRecord!['id'], {
+        'checkOutTime': now,
+        'checkOutPhoto': photoPath,
+        'checkOutLat': position.latitude,
+        'checkOutLong': position.longitude,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Staff Checked-out with Photo & Location!'), backgroundColor: Colors.blue));
+    }
+    _loadStats();
   }
 
   @override
@@ -113,6 +213,18 @@ class _StaffDashboardState extends State<StaffDashboard> {
                 Text('Role: ${widget.role}', style: const TextStyle(color: Colors.white70, fontSize: 16)),
                 const SizedBox(height: 15),
                 const Text('Keep pushing members to reach their fitness goals today!', style: TextStyle(color: Colors.white, fontSize: 13)),
+                const SizedBox(height: 15),
+                ElevatedButton.icon(
+                  onPressed: _toggleStaffAttendance,
+                  icon: Icon(_isStaffCheckedIn ? Icons.logout : Icons.login, size: 18),
+                  label: Text(_isStaffCheckedIn ? 'Staff Check-out' : 'Staff Check-in'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isStaffCheckedIn ? Colors.orange : Colors.white,
+                    foregroundColor: _isStaffCheckedIn ? Colors.white : const Color(0xFF2D6A4F),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -122,10 +234,10 @@ class _StaffDashboardState extends State<StaffDashboard> {
             child: CircleAvatar(
               radius: 35,
               backgroundColor: Colors.white24,
-              backgroundImage: (widget.userData['imagePath'] != null && File(widget.userData['imagePath']).existsSync())
-                  ? FileImage(File(widget.userData['imagePath']))
+              backgroundImage: (widget.userData['imagePath'] != null && File(widget.userData['imagePath'].toString()).existsSync())
+                  ? FileImage(File(widget.userData['imagePath'].toString()))
                   : null,
-              child: (widget.userData['imagePath'] == null || !File(widget.userData['imagePath']).existsSync())
+              child: (widget.userData['imagePath'] == null || !File(widget.userData['imagePath'].toString()).existsSync())
                   ? const Icon(Icons.person, color: Colors.white, size: 40)
                   : null,
             ),
@@ -163,14 +275,22 @@ class _StaffDashboardState extends State<StaffDashboard> {
       runSpacing: 15,
       children: [
         if (widget.role == 'Manager' || widget.role == 'Receptionist')
-          _buildShortcut('Add Member', Icons.person_add, Colors.blue, () {}),
+          _buildShortcut('Add Member', Icons.person_add, Colors.blue, () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const MemberPage()));
+          }),
         
-        _buildShortcut('Mark Attendance', Icons.check_circle, Colors.green, () {}),
+        _buildShortcut('Mark Attendance', Icons.check_circle, Colors.green, () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendancePage()));
+        }),
         
         if (widget.role == 'Manager' || widget.role == 'Trainer')
-          _buildShortcut('Maintenance', Icons.build, Colors.orange, () {}),
+          _buildShortcut('Maintenance', Icons.build, Colors.orange, () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenancePage()));
+          }),
 
-        _buildShortcut('Events', Icons.event, Colors.purple, () {}),
+        _buildShortcut('Events', Icons.event, Colors.purple, () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const EventsPage()));
+        }),
       ],
     );
   }

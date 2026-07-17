@@ -283,6 +283,10 @@ class DatabaseHelper {
     final db = await instance.database;
     return await db.query('attendance', where: 'date = ? AND userType = "Staff"', whereArgs: [date]);
   }
+  Future<List<Map<String, dynamic>>> queryAllAttendance() async {
+    final db = await instance.database;
+    return await db.query('attendance', orderBy: 'date DESC, time DESC');
+  }
   Future<int> updateAttendance(int id, Map<String, dynamic> values) async {
     final db = await instance.database;
     return await db.update('attendance', values, where: 'id = ?', whereArgs: [id]);

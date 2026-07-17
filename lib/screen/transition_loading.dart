@@ -26,7 +26,7 @@ class _TransitionLoadingScreenState extends State<TransitionLoadingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Column(
@@ -35,18 +35,18 @@ class _TransitionLoadingScreenState extends State<TransitionLoadingScreen> {
             Image.asset(
               'assets/logo.png',
               height: 80,
-              errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 50),
+              errorBuilder: (context, error, stack) => Icon(Icons.fitness_center, color: const Color(0xFF2D6A4F), size: 50),
             ),
             const SizedBox(height: 30),
-            const CircularProgressIndicator(
-              color: Color(0xFF2D6A4F),
+            CircularProgressIndicator(
+              color: const Color(0xFF2D6A4F),
               strokeWidth: 3,
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Initializing your dashboard...',
               style: TextStyle(
-                color: Color(0xFF2D6A4F),
+                color: const Color(0xFF2D6A4F),
                 fontWeight: FontWeight.w500,
                 fontSize: 16,
               ),

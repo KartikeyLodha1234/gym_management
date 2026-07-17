@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 import 'sidebar.dart';
 
 class AttendancePage extends StatefulWidget {
@@ -24,9 +24,9 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final members = await FirebaseService.instance.getAllMembers();
+    final members = await DatabaseHelper.instance.queryAllMembers();
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final attendance = await FirebaseService.instance.getAttendanceByDate(dateStr);
+    final attendance = await DatabaseHelper.instance.queryAttendanceByDate(dateStr);
     setState(() {
       _allMembers = members;
       _attendanceList = attendance;
@@ -38,7 +38,7 @@ class _AttendancePageState extends State<AttendancePage> {
     final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     
     // Check if already marked for today
-    final alreadyMarked = _attendanceList.any((a) => a['memberId'] == member['id']);
+    final alreadyMarked = _attendanceList.any((a) => a['memberId'].toString() == member['id'].toString());
     
     if (alreadyMarked) {
       if (mounted) {
@@ -57,7 +57,7 @@ class _AttendancePageState extends State<AttendancePage> {
       'status': 'Present'
     };
 
-    await FirebaseService.instance.addAttendance(attendanceData);
+    await DatabaseHelper.instance.insertAttendance(attendanceData);
     _loadData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,7 +87,7 @@ class _AttendancePageState extends State<AttendancePage> {
                   _buildSectionTitle('Mark Attendance'),
                   _buildCard([
                     Autocomplete<Map<String, dynamic>>(
-                      displayStringForOption: (option) => option['name'],
+                      displayStringForOption: (option) => option['name'].toString(),
                       optionsBuilder: (TextEditingValue textEditingValue) {
                         if (textEditingValue.text == '') {
                           return const Iterable<Map<String, dynamic>>.empty();
@@ -155,15 +155,15 @@ class _AttendancePageState extends State<AttendancePage> {
                           final record = _attendanceList[index];
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: const Color(0xFF2D6A4F).withValues(alpha: 0.1),
+                              backgroundColor: const Color(0xFF2D6A4F).withOpacity(0.1),
                               child: const Icon(Icons.check, color: Color(0xFF2D6A4F)),
                             ),
-                            title: Text(record['memberName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                            title: Text(record['memberName'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text('ID: ${record['memberId']} • Time: ${record['time']}'),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                               onPressed: () async {
-                                // Add deleteAttendance to FirebaseService if needed
+                                await DatabaseHelper.instance.deleteAttendance(int.parse(record['id'].toString()));
                                 _loadData();
                               },
                             ),
@@ -191,7 +191,7 @@ class _AttendancePageState extends State<AttendancePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );

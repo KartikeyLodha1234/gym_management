@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'services/firebase_service.dart';
+import 'database_helper.dart';
 import 'screen/admin/dashboard.dart';
 import 'screen/staff/staff_dashboard.dart';
 import 'screen/customer/customer_dashboard.dart';
@@ -37,39 +37,34 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // 2. Firebase Sign In
-      final user = await FirebaseService.instance.signIn(email, password);
+      // 2. Local Staff Check
+      final staff = await DatabaseHelper.instance.queryAllStaff();
+      final staffUser = staff.cast<Map<String, dynamic>?>().firstWhere(
+        (s) => s!['email'] == email && s['password'] == password,
+        orElse: () => null,
+      );
 
-      if (user != null) {
-        // Here you would fetch user role from Firestore
-        // For now, let's assume if they are in 'staff' collection, they are staff
-        final allStaff = await FirebaseService.instance.getAllStaff();
-        final staffUser = allStaff.cast<Map<String, dynamic>?>().firstWhere(
-          (s) => s!['email'] == email,
-          orElse: () => null,
-        );
+      if (staffUser != null) {
+        _navigateTo(StaffDashboard(role: staffUser['role'], userData: staffUser));
+        return;
+      }
 
-        if (staffUser != null) {
-          _navigateTo(StaffDashboard(role: staffUser['role'], userData: staffUser));
-          return;
-        }
+      // 3. Local Members Check (Customers)
+      final members = await DatabaseHelper.instance.queryAllMembers();
+      final memberUser = members.cast<Map<String, dynamic>?>().firstWhere(
+        (m) => m!['email'] == email && m['password'] == password,
+        orElse: () => null,
+      );
 
-        final allMembers = await FirebaseService.instance.getAllMembers();
-        final memberUser = allMembers.cast<Map<String, dynamic>?>().firstWhere(
-          (m) => m!['email'] == email,
-          orElse: () => null,
-        );
-
-        if (memberUser != null) {
-          _navigateTo(CustomerDashboard(userData: memberUser));
-          return;
-        }
+      if (memberUser != null) {
+        _navigateTo(CustomerDashboard(userData: memberUser));
+        return;
       }
 
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login Failed. Check credentials or internet.'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Invalid Email or Password'), backgroundColor: Colors.red),
         );
       }
     }
@@ -113,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: InputDecoration(
                           hintText: 'Email / Username',
                           filled: true,
-                          fillColor: const Color(0xFFD8E2DC).withValues(alpha: 0.5),
+                          fillColor: const Color(0xFFD8E2DC).withOpacity(0.5),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                           prefixIcon: const Icon(Icons.email_outlined),
                         ),
@@ -126,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: InputDecoration(
                           hintText: 'Password',
                           filled: true,
-                          fillColor: const Color(0xFFD8E2DC).withValues(alpha: 0.5),
+                          fillColor: const Color(0xFFD8E2DC).withOpacity(0.5),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(

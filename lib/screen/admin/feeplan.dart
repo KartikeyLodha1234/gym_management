@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'sidebar.dart';
 import 'plan_data.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 
 class FeePlanPage extends StatefulWidget {
   const FeePlanPage({super.key});
@@ -22,12 +22,11 @@ class _FeePlanPageState extends State<FeePlanPage> {
 
   Future<void> _refreshPlans() async {
     setState(() => _isLoading = true);
-    final data = await FirebaseService.instance.getAllPlans();
+    final data = await DatabaseHelper.instance.queryAllPlans();
     
-    // If no plans in DB, migrate initial plans from PlanData
     if (data.isEmpty) {
       for (var plan in PlanData.plans) {
-        await FirebaseService.instance.addPlan({
+        await DatabaseHelper.instance.insertPlan({
           'name': plan['name'],
           'price': plan['price'],
           'duration': plan['duration'],
@@ -35,7 +34,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
           'color': (plan['color'] as Color).value,
         });
       }
-      final newData = await FirebaseService.instance.getAllPlans();
+      final newData = await DatabaseHelper.instance.queryAllPlans();
       setState(() {
         _plans = newData;
         _isLoading = false;
@@ -48,16 +47,16 @@ class _FeePlanPageState extends State<FeePlanPage> {
     }
   }
 
-  Future<void> _addOrUpdatePlan(Map<String, dynamic> planData, {String? id}) async {
+  Future<void> _addOrUpdatePlan(Map<String, dynamic> planData, {int? id}) async {
     if (id != null) {
-      await FirebaseService.instance.updatePlan(planData);
+      await DatabaseHelper.instance.updatePlan(planData);
     } else {
-      await FirebaseService.instance.addPlan(planData);
+      await DatabaseHelper.instance.insertPlan(planData);
     }
     _refreshPlans();
   }
 
-  void _deletePlan(String id) {
+  void _deletePlan(int id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -67,7 +66,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
-              await FirebaseService.instance.deletePlan(id);
+              await DatabaseHelper.instance.deletePlan(id);
               Navigator.pop(context);
               _refreshPlans();
             },
@@ -134,7 +133,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
       context: context,
       builder: (context) => PlanDialog(
         plan: plan,
-        onSave: (newData) => _addOrUpdatePlan(newData, id: plan?['id']),
+        onSave: (newData) => _addOrUpdatePlan(newData, id: plan != null ? int.parse(plan['id'].toString()) : null),
       ),
     );
   }
@@ -144,7 +143,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(plan['name'], style: TextStyle(color: Color(plan['color']), fontWeight: FontWeight.bold)),
+        title: Text(plan['name'].toString(), style: TextStyle(color: Color(int.parse(plan['color'].toString())), fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,7 +170,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -182,7 +181,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             decoration: BoxDecoration(
-              color: Color(plan['color']),
+              color: Color(int.parse(plan['color'].toString())),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(15),
                 topRight: Radius.circular(15),
@@ -192,7 +191,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  plan['name'],
+                  plan['name'].toString(),
                   style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
@@ -220,7 +219,7 @@ class _FeePlanPageState extends State<FeePlanPage> {
                       label: const Text('Edit', style: TextStyle(color: Colors.blue)),
                     ),
                     TextButton.icon(
-                      onPressed: () => _deletePlan(plan['id'].toString()),
+                      onPressed: () => _deletePlan(int.parse(plan['id'].toString())),
                       icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                       label: const Text('Delete', style: TextStyle(color: Colors.red)),
                     ),
@@ -255,10 +254,10 @@ class _PlanDialogState extends State<PlanDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.plan?['name'] ?? '');
-    _priceController = TextEditingController(text: widget.plan?['price'] ?? '');
-    _durationController = TextEditingController(text: widget.plan?['duration'] ?? '');
-    _featuresController = TextEditingController(text: widget.plan?['features'] ?? '');
+    _nameController = TextEditingController(text: widget.plan?['name']?.toString() ?? '');
+    _priceController = TextEditingController(text: widget.plan?['price']?.toString() ?? '');
+    _durationController = TextEditingController(text: widget.plan?['duration']?.toString() ?? '');
+    _featuresController = TextEditingController(text: widget.plan?['features']?.toString() ?? '');
   }
 
   @override
@@ -303,12 +302,12 @@ class _PlanDialogState extends State<PlanDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               widget.onSave({
-                if (widget.plan != null) 'id': widget.plan!['id'],
+                if (widget.plan != null) 'id': int.parse(widget.plan!['id'].toString()),
                 'name': _nameController.text,
                 'price': _priceController.text,
                 'duration': _durationController.text,
                 'features': _featuresController.text,
-                'color': widget.plan?['color'] ?? const Color(0xFF2D6A4F).value,
+                'color': widget.plan?['color'] != null ? int.parse(widget.plan!['color'].toString()) : const Color(0xFF2D6A4F).value,
               });
               Navigator.pop(context);
             }

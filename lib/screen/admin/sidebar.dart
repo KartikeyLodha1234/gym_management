@@ -161,7 +161,7 @@ class AppSidebar extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.person_outline, color: Color(0xFF2D6A4F)),
                     title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-                    tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withValues(alpha: 0.08) : null,
+                    tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withOpacity(0.08) : null,
                     onTap: () {
                       if (currentPage != 'Profile') {
                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const UserProfilePage()));
@@ -201,7 +201,7 @@ class AppSidebar extends StatelessWidget {
           color: isSelected ? const Color(0xFF2D6A4F) : Colors.grey[600],
         ),
       ),
-      tileColor: isSelected ? const Color(0xFF2D6A4F).withValues(alpha: 0.08) : null,
+      tileColor: isSelected ? const Color(0xFF2D6A4F).withOpacity(0.08) : null,
       onTap: onTap,
     );
   }

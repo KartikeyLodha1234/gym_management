@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10, // Incremented version for expanded maintenance and inventory
+      version: 10,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -41,7 +41,6 @@ class DatabaseHelper {
       await _createPlansTable(db);
     }
     if (oldVersion < 10) {
-      // Re-create maintenance with new fields or alter it
       await db.execute('DROP TABLE IF EXISTS maintenance');
       await _createMaintenanceTable(db);
       await _createInventoryTable(db);
@@ -181,159 +180,117 @@ class DatabaseHelper {
     ''');
   }
 
-  // Member Methods
+  // --- CRUD Methods ---
+  
+  // Members
   Future<int> insertMember(Map<String, dynamic> member) async {
     final db = await instance.database;
     return await db.insert('members', member);
   }
-
   Future<List<Map<String, dynamic>>> queryAllMembers() async {
     final db = await instance.database;
     return await db.query('members');
   }
-
   Future<int> updateMember(Map<String, dynamic> member) async {
     final db = await instance.database;
-    int id = member['id'];
-    return await db.update('members', member, where: 'id = ?', whereArgs: [id]);
+    return await db.update('members', member, where: 'id = ?', whereArgs: [member['id']]);
   }
-
   Future<int> deleteMember(int id) async {
     final db = await instance.database;
     return await db.delete('members', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Payment Methods
-  Future<int> insertPayment(Map<String, dynamic> payment) async {
-    final db = await instance.database;
-    return await db.insert('payments', payment);
-  }
-
-  Future<List<Map<String, dynamic>>> queryAllPayments() async {
-    final db = await instance.database;
-    return await db.query('payments');
-  }
-
-  Future<int> deletePayment(int id) async {
-    final db = await instance.database;
-    return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
-  }
-
-  // Event Methods
-  Future<int> insertEvent(Map<String, dynamic> event) async {
-    final db = await instance.database;
-    return await db.insert('events', event);
-  }
-
-  Future<List<Map<String, dynamic>>> queryAllEvents() async {
-    final db = await instance.database;
-    return await db.query('events', orderBy: 'date DESC');
-  }
-
-  Future<int> deleteEvent(int id) async {
-    final db = await instance.database;
-    return await db.delete('events', where: 'id = ?', whereArgs: [id]);
-  }
-
-  // Staff Methods
+  // Staff
   Future<int> insertStaff(Map<String, dynamic> staff) async {
     final db = await instance.database;
     return await db.insert('staff', staff);
   }
-
   Future<List<Map<String, dynamic>>> queryAllStaff() async {
     final db = await instance.database;
     return await db.query('staff');
   }
-
   Future<int> updateStaff(Map<String, dynamic> staff) async {
     final db = await instance.database;
-    int id = staff['id'];
-    return await db.update('staff', staff, where: 'id = ?', whereArgs: [id]);
+    return await db.update('staff', staff, where: 'id = ?', whereArgs: [staff['id']]);
   }
-
   Future<int> deleteStaff(int id) async {
     final db = await instance.database;
     return await db.delete('staff', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Attendance Methods
+  // Payments
+  Future<int> insertPayment(Map<String, dynamic> payment) async {
+    final db = await instance.database;
+    return await db.insert('payments', payment);
+  }
+  Future<List<Map<String, dynamic>>> queryAllPayments() async {
+    final db = await instance.database;
+    return await db.query('payments');
+  }
+  Future<int> deletePayment(int id) async {
+    final db = await instance.database;
+    return await db.delete('payments', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Events
+  Future<int> insertEvent(Map<String, dynamic> event) async {
+    final db = await instance.database;
+    return await db.insert('events', event);
+  }
+  Future<List<Map<String, dynamic>>> queryAllEvents() async {
+    final db = await instance.database;
+    return await db.query('events', orderBy: 'date DESC');
+  }
+  Future<int> deleteEvent(int id) async {
+    final db = await instance.database;
+    return await db.delete('events', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Attendance
   Future<int> insertAttendance(Map<String, dynamic> attendance) async {
     final db = await instance.database;
     return await db.insert('attendance', attendance);
   }
-
   Future<List<Map<String, dynamic>>> queryAttendanceByDate(String date) async {
     final db = await instance.database;
     return await db.query('attendance', where: 'date = ?', whereArgs: [date]);
   }
-
-  Future<List<Map<String, dynamic>>> queryAllAttendance() async {
-    final db = await instance.database;
-    return await db.query('attendance', orderBy: 'date DESC, time DESC');
-  }
-
   Future<int> deleteAttendance(int id) async {
     final db = await instance.database;
     return await db.delete('attendance', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Maintenance Methods
+  // Maintenance
   Future<int> insertMaintenance(Map<String, dynamic> record) async {
     final db = await instance.database;
     return await db.insert('maintenance', record);
   }
-
   Future<List<Map<String, dynamic>>> queryAllMaintenance() async {
     final db = await instance.database;
     return await db.query('maintenance', orderBy: 'date DESC');
   }
-
   Future<int> updateMaintenance(Map<String, dynamic> record) async {
     final db = await instance.database;
-    int id = record['id'];
-    return await db.update('maintenance', record, where: 'id = ?', whereArgs: [id]);
+    return await db.update('maintenance', record, where: 'id = ?', whereArgs: [record['id']]);
   }
-
   Future<int> deleteMaintenance(int id) async {
     final db = await instance.database;
     return await db.delete('maintenance', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Inventory Methods
-  Future<int> insertInventory(Map<String, dynamic> item) async {
-    final db = await instance.database;
-    return await db.insert('inventory', item);
-  }
-
-  Future<List<Map<String, dynamic>>> queryAllInventory() async {
-    final db = await instance.database;
-    return await db.query('inventory');
-  }
-
-  Future<int> updateInventory(Map<String, dynamic> item) async {
-    final db = await instance.database;
-    int id = item['id'];
-    return await db.update('inventory', item, where: 'id = ?', whereArgs: [id]);
-  }
-
-  // Plan Methods
+  // Plans
   Future<int> insertPlan(Map<String, dynamic> plan) async {
     final db = await instance.database;
     return await db.insert('plans', plan);
   }
-
   Future<List<Map<String, dynamic>>> queryAllPlans() async {
     final db = await instance.database;
     return await db.query('plans');
   }
-
   Future<int> updatePlan(Map<String, dynamic> plan) async {
     final db = await instance.database;
-    int id = plan['id'];
-    return await db.update('plans', plan, where: 'id = ?', whereArgs: [id]);
+    return await db.update('plans', plan, where: 'id = ?', whereArgs: [plan['id']]);
   }
-
   Future<int> deletePlan(int id) async {
     final db = await instance.database;
     return await db.delete('plans', where: 'id = ?', whereArgs: [id]);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 import 'sidebar.dart';
 
 class MaintenancePage extends StatefulWidget {
@@ -23,7 +23,7 @@ class _MaintenancePageState extends State<MaintenancePage> {
 
   Future<void> _refreshRecords() async {
     setState(() => _isLoading = true);
-    final data = await FirebaseService.instance.getAllMaintenance();
+    final data = await DatabaseHelper.instance.queryAllMaintenance();
     setState(() {
       _records = data;
       _isLoading = false;
@@ -113,12 +113,12 @@ class _MaintenancePageState extends State<MaintenancePage> {
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: ExpansionTile(
-        title: Text(record['equipmentName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(record['equipmentName'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text("${record['category']} • ${record['serviceType']}", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-          child: Text(record['status'], style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+          decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          child: Text(record['status'].toString(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
         ),
         children: [
           Padding(
@@ -126,15 +126,15 @@ class _MaintenancePageState extends State<MaintenancePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoRow('Reported By', record['reportedBy'] ?? 'N/A'),
-                _buildInfoRow('Technician', record['repairedBy'] ?? 'Waiting...'),
-                _buildInfoRow('Request Date', DateFormat('dd MMM yyyy').format(DateTime.parse(record['date']))),
-                if (record['nextServiceDate'] != null) _buildInfoRow('Next Service', DateFormat('dd MMM yyyy').format(DateTime.parse(record['nextServiceDate']))),
+                _buildInfoRow('Reported By', record['reportedBy']?.toString() ?? 'N/A'),
+                _buildInfoRow('Technician', record['repairedBy']?.toString() ?? 'Waiting...'),
+                _buildInfoRow('Request Date', record['date'] != null ? DateFormat('dd MMM yyyy').format(DateTime.parse(record['date'].toString())) : 'N/A'),
+                if (record['nextServiceDate'] != null) _buildInfoRow('Next Service', DateFormat('dd MMM yyyy').format(DateTime.parse(record['nextServiceDate'].toString()))),
                 _buildInfoRow('Cost', "₹${record['cost']}"),
-                _buildInfoRow('Parts Used', record['partsUsed'] ?? 'None'),
+                _buildInfoRow('Parts Used', record['partsUsed']?.toString() ?? 'None'),
                 const SizedBox(height: 10),
                 const Text('Remarks:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text(record['remarks'] ?? 'No remarks', style: const TextStyle(fontSize: 13)),
+                Text(record['remarks']?.toString() ?? 'No remarks', style: const TextStyle(fontSize: 13)),
                 const Divider(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -146,7 +146,7 @@ class _MaintenancePageState extends State<MaintenancePage> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () => _deleteRecord(record['id']),
+                      onPressed: () => _deleteRecord(int.parse(record['id'].toString())),
                     ),
                   ],
                 )
@@ -171,8 +171,8 @@ class _MaintenancePageState extends State<MaintenancePage> {
     );
   }
 
-  Future<void> _deleteRecord(String id) async {
-    await FirebaseService.instance.deleteMaintenance(id);
+  Future<void> _deleteRecord(int id) async {
+    await DatabaseHelper.instance.deleteMaintenance(id);
     _refreshRecords();
   }
 
@@ -184,10 +184,10 @@ class _MaintenancePageState extends State<MaintenancePage> {
   }
 
   void _showUpdateStatusDialog(Map<String, dynamic> record) {
-    String selectedStatus = record['status'];
-    final techController = TextEditingController(text: record['repairedBy']);
-    final partsController = TextEditingController(text: record['partsUsed']);
-    final costController = TextEditingController(text: record['cost'].toString());
+    String selectedStatus = record['status'].toString();
+    final techController = TextEditingController(text: record['repairedBy']?.toString() ?? '');
+    final partsController = TextEditingController(text: record['partsUsed']?.toString() ?? '');
+    final costController = TextEditingController(text: record['cost']?.toString() ?? '0');
 
     showDialog(
       context: context,
@@ -217,16 +217,11 @@ class _MaintenancePageState extends State<MaintenancePage> {
             ElevatedButton(
               onPressed: () async {
                 final updated = Map<String, dynamic>.from(record);
-                final String id = updated['id'];
-                updated.remove('id');
-                
                 updated['status'] = selectedStatus;
                 updated['repairedBy'] = techController.text;
                 updated['partsUsed'] = partsController.text;
                 updated['cost'] = double.tryParse(costController.text) ?? 0.0;
-                
-                await FirebaseService.instance.updateMaintenance(updated..addAll({'id': id})); 
-                // In my updated FirebaseService, updateMaintenance expects the whole map and extracts 'id'
+                await DatabaseHelper.instance.updateMaintenance(updated);
                 Navigator.pop(context);
                 _refreshRecords();
               },
@@ -311,7 +306,7 @@ class _AddMaintenanceDialogState extends State<AddMaintenanceDialog> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              await FirebaseService.instance.addMaintenance({
+              await DatabaseHelper.instance.insertMaintenance({
                 'equipmentName': _equipController.text,
                 'category': _selectedCategory,
                 'serviceType': _selectedService,

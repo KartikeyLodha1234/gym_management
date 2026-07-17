@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 import 'sidebar.dart';
 import 'events.dart';
 
@@ -28,18 +28,17 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
     try {
-      final members = await FirebaseService.instance.getAllMembers();
-      // For now we don't have getAllEvents in FirebaseService yet, adding it.
-      // Finalizing FirebaseService first.
+      final members = await DatabaseHelper.instance.queryAllMembers();
+      final staff = await DatabaseHelper.instance.queryAllStaff();
+      final events = await DatabaseHelper.instance.queryAllEvents();
       
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
       
       setState(() {
         _totalMembers = members.length;
         _activeMembers = members.where((m) => m['status'] == 'Active').length;
-        // Mocking staff and events for now until Service is full
-        _totalStaff = 0; 
-        _todayEvents = [];
+        _totalStaff = staff.length;
+        _todayEvents = events.where((e) => e['date'].startsWith(today)).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -92,7 +91,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             isCurved: true,
                             color: Colors.blue,
                             barWidth: 3,
-                            belowBarData: BarAreaData(show: true, color: Colors.blue.withValues(alpha: 0.1)),
+                            belowBarData: BarAreaData(show: true, color: Colors.blue.withOpacity(0.1)),
                           ),
                         ],
                       ),
@@ -163,7 +162,7 @@ class _DashboardPageState extends State<DashboardPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4))],
         ),
         child: Column(
           children: [
@@ -184,7 +183,7 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         color: Colors.white, 
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: chart,
     );

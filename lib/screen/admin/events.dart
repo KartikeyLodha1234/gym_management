@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 import 'sidebar.dart';
 
 class EventsPage extends StatefulWidget {
@@ -22,11 +22,16 @@ class _EventsPageState extends State<EventsPage> {
 
   Future<void> _refreshEvents() async {
     setState(() => _isLoading = true);
-    final data = await FirebaseService.instance.getAllEvents();
-    setState(() {
-      _events = data;
-      _isLoading = false;
-    });
+    try {
+      final data = await DatabaseHelper.instance.queryAllEvents();
+      setState(() {
+        _events = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error refreshing events: $e");
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -76,7 +81,7 @@ class _EventsPageState extends State<EventsPage> {
   }
 
   Widget _buildEventCard(Map<String, dynamic> event) {
-    final date = DateTime.parse(event['date']);
+    final date = DateTime.parse(event['date'].toString());
     final formattedDate = DateFormat('dd MMM yyyy').format(date);
     
     return Card(
@@ -94,22 +99,22 @@ class _EventsPageState extends State<EventsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2D6A4F).withValues(alpha: 0.1),
+                    color: const Color(0xFF2D6A4F).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    event['type'],
+                    event['type'].toString(),
                     style: const TextStyle(color: Color(0xFF2D6A4F), fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                  onPressed: () => _deleteEvent(event['id']),
+                  onPressed: () => _deleteEvent(int.parse(event['id'].toString())),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(event['title'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(event['title'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -119,14 +124,14 @@ class _EventsPageState extends State<EventsPage> {
                 const SizedBox(width: 20),
                 const Icon(Icons.access_time, size: 16, color: Colors.grey),
                 const SizedBox(width: 8),
-                Text(event['time'], style: const TextStyle(color: Colors.grey)),
+                Text(event['time'].toString(), style: const TextStyle(color: Colors.grey)),
               ],
             ),
-            if (event['schedule'] != null && event['schedule'].isNotEmpty) ...[
+            if (event['schedule'] != null && event['schedule'].toString().isNotEmpty) ...[
               const Divider(height: 24),
               const Text('Schedule:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 4),
-              Text(event['schedule'], style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+              Text(event['schedule'].toString(), style: TextStyle(color: Colors.grey[700], fontSize: 14)),
             ],
           ],
         ),
@@ -134,8 +139,8 @@ class _EventsPageState extends State<EventsPage> {
     );
   }
 
-  Future<void> _deleteEvent(String id) async {
-    await FirebaseService.instance.deleteEvent(id);
+  Future<void> _deleteEvent(int id) async {
+    await DatabaseHelper.instance.deleteEvent(id);
     _refreshEvents();
   }
 
@@ -243,7 +248,7 @@ class _AddEventDialogState extends State<AddEventDialog> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              await FirebaseService.instance.addEvent({
+              await DatabaseHelper.instance.insertEvent({
                 'title': _titleController.text,
                 'type': _selectedType,
                 'date': _selectedDate.toIso8601String(),

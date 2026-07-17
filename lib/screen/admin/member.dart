@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'sidebar.dart';
 import 'plan_data.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 
 class MemberPage extends StatefulWidget {
   const MemberPage({super.key});
@@ -33,13 +33,17 @@ class _MemberPageState extends State<MemberPage> {
 
   Future<void> _refreshData() async {
     try {
-      final memberData = await FirebaseService.instance.getAllMembers();
-      final planData = await FirebaseService.instance.getAllPlans();
+      final memberData = await DatabaseHelper.instance.queryAllMembers();
+      final planData = await DatabaseHelper.instance.queryAllPlans();
       
       List<Map<String, dynamic>> parsedMembers = [];
       for (var item in memberData) {
         final member = Map<String, dynamic>.from(item);
         
+        if (member['id'] != null && member['id'] is String) {
+          member['id'] = int.tryParse(member['id'].toString()) ?? 0;
+        }
+
         try {
           if (member['joinDate'] != null && member['joinDate'] is String) {
             member['joinDate'] = DateTime.parse(member['joinDate'].toString());
@@ -75,24 +79,21 @@ class _MemberPageState extends State<MemberPage> {
     memberToSave['joinDate'] = (memberToSave['joinDate'] as DateTime).toIso8601String();
     memberToSave['expiryDate'] = (memberToSave['expiryDate'] as DateTime).toIso8601String();
 
-    await FirebaseService.instance.addMember(memberToSave);
+    await DatabaseHelper.instance.insertMember(memberToSave);
     _refreshData();
   }
 
   Future<void> _updateMember(Map<String, dynamic> member) async {
     final memberToSave = Map<String, dynamic>.from(member);
-    final String id = memberToSave['id'];
-    memberToSave.remove('id');
-    
     memberToSave['joinDate'] = (memberToSave['joinDate'] as DateTime).toIso8601String();
     memberToSave['expiryDate'] = (memberToSave['expiryDate'] as DateTime).toIso8601String();
 
-    await FirebaseService.instance.updateMember(id, memberToSave);
+    await DatabaseHelper.instance.updateMember(memberToSave);
     _refreshData();
   }
 
-  Future<void> _deleteMember(dynamic id) async {
-    await FirebaseService.instance.deleteMember(id.toString());
+  Future<void> _deleteMember(int id) async {
+    await DatabaseHelper.instance.deleteMember(id);
     _refreshData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -258,7 +259,7 @@ class _MemberPageState extends State<MemberPage> {
                   scrollDirection: Axis.horizontal,
                   child: SingleChildScrollView(
                     child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F8E9)),
+                      headingRowColor: MaterialStateProperty.all(const Color(0xFFF1F8E9)),
                       border: TableBorder.symmetric(inside: const BorderSide(color: Colors.black12)),
                       columns: const [
                         DataColumn(label: Text('Photo', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -286,7 +287,7 @@ class _MemberPageState extends State<MemberPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: member['status'].toString() == 'Active' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                                color: member['status'].toString() == 'Active' ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -300,7 +301,7 @@ class _MemberPageState extends State<MemberPage> {
                               children: [
                                 IconButton(icon: const Icon(Icons.visibility, size: 20, color: Colors.blue), onPressed: () => _showViewDialog(member)),
                                 IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.orange), onPressed: () => _showEditMemberDialog(context, member)),
-                                IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _deleteMember(int.parse(member['id'].toString()))),
+                                IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _deleteMember(member['id'])),
                               ],
                             ),
                           ),
@@ -336,8 +337,8 @@ class _MemberPageState extends State<MemberPage> {
             Text('ID: ${member['id']}'),
             Text('Mobile: ${member['mobile']}'),
             Text('Plan: ${member['plan']}'),
-            Text('Join Date: ${DateFormat('dd MMM yyyy').format(member['joinDate'])}'),
-            Text('Expiry: ${DateFormat('dd MMM yyyy').format(member['expiryDate'])}'),
+            Text('Join Date: ${member['joinDate'] != null ? DateFormat('dd MMM yyyy').format(member['joinDate']) : 'N/A'}'),
+            Text('Expiry: ${member['expiryDate'] != null ? DateFormat('dd MMM yyyy').format(member['expiryDate']) : 'N/A'}'),
             Text('Trainer: ${member['trainer']}'),
             Text('Emergency: ${member['emergency']}'),
             Text('Email: ${member['email'] ?? 'N/A'}'),
@@ -369,7 +370,7 @@ class _MemberPageState extends State<MemberPage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
+              color: Colors.grey.withOpacity(0.1),
               spreadRadius: 1,
               blurRadius: 5,
               offset: const Offset(0, 2),
@@ -380,7 +381,7 @@ class _MemberPageState extends State<MemberPage> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 8),
@@ -446,16 +447,15 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
   void initState() {
     super.initState();
     if (widget.plans.isNotEmpty) {
-      _plan = widget.member != null ? widget.member!['plan'] : widget.plans[0]['name'];
+      _plan = widget.member != null ? widget.member!['plan'].toString() : widget.plans[0]['name'].toString();
     }
     if (widget.member != null) {
-      _nameController.text = widget.member!['name'];
-      _mobileController.text = widget.member!['mobile'].replaceAll('+91 ', '');
-      _emailController.text = widget.member!['email'] ?? '';
-      _emergencyController.text = widget.member!['emergency'].replaceAll('+91 ', '');
-      _gender = widget.member!['gender'];
+      _nameController.text = widget.member!['name'].toString();
+      _mobileController.text = widget.member!['mobile'].toString().replaceAll('+91 ', '');
+      _emailController.text = widget.member!['email']?.toString() ?? '';
+      _emergencyController.text = widget.member!['emergency'].toString().replaceAll('+91 ', '');
+      _gender = widget.member!['gender'].toString();
       
-      // Fix: Handle both String and DateTime types to avoid "type 'DateTime' is not a subtype of type 'String'"
       if (widget.member!['dob'] != null) {
         if (widget.member!['dob'] is String) {
           _dob = DateTime.parse(widget.member!['dob']);
@@ -469,20 +469,19 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
           : widget.member!['joinDate'];
           
       _expiryDate = widget.member!['expiryDate'] is String 
-          ? DateTime.parse(widget.member!['expiryDate'].toString()) 
+          ? DateTime.parse(widget.member!['expiryDate']) 
           : widget.member!['expiryDate'];
 
       _priceController.text = widget.member!['price'].toString();
       _trainerController.text = widget.member!['trainer'].toString();
-      _passwordController.text = widget.member!['password'] ?? '';
-      _plan = widget.member!['plan'].toString();
+      _passwordController.text = widget.member!['password']?.toString() ?? '';
 
       if (widget.member!['imagePath'] != null) {
-        _image = File(widget.member!['imagePath']);
+        _image = File(widget.member!['imagePath'].toString());
       }
     } else if (widget.plans.isNotEmpty) {
       final initialPlan = widget.plans.firstWhere((p) => p['name'] == _plan, orElse: () => widget.plans[0]);
-      _priceController.text = (initialPlan['price'] as String).replaceAll(',', '');
+      _priceController.text = initialPlan['price'].toString().replaceAll(',', '');
     }
   }
 
@@ -607,7 +606,7 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 TextFormField(controller: _emergencyController, decoration: const InputDecoration(labelText: 'Emergency Number', prefixText: '+91 ', border: OutlineInputBorder(), prefixIcon: Icon(Icons.contact_phone)), keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Enter emergency contact' : null),
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
-                  value: widget.member?['status'] ?? 'Active',
+                  value: widget.member?['status']?.toString() ?? 'Active',
                   items: ['Active', 'Inactive'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   onChanged: (v) => setState(() => widget.member?['status'] = v),
                   decoration: const InputDecoration(labelText: 'Member Status', border: OutlineInputBorder(), prefixIcon: Icon(Icons.info_outline)),
@@ -626,13 +625,13 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 const Divider(),
                 DropdownButtonFormField<String>(
                   value: _plan,
-                  items: _plans.isEmpty 
+                  items: widget.plans.isEmpty 
                     ? [DropdownMenuItem(value: _plan, child: Text(_plan))]
-                    : _plans.map((p) => DropdownMenuItem(value: p['name'].toString(), child: Text(p['name'].toString()))).toList(),
+                    : widget.plans.map((p) => DropdownMenuItem(value: p['name'].toString(), child: Text(p['name'].toString()))).toList(),
                   onChanged: (v) {
                     setState(() {
                       _plan = v!;
-                      final selectedPlan = _plans.firstWhere((p) => p['name'].toString() == v, orElse: () => {});
+                      final selectedPlan = widget.plans.firstWhere((p) => p['name'] == v, orElse: () => {});
                       if (selectedPlan.isNotEmpty) {
                         _priceController.text = selectedPlan['price'].toString().replaceAll(',', '');
                         _updateExpiryDateWithPlan(selectedPlan);
@@ -664,19 +663,20 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                 'age': age,
                 'dob': _dob.toIso8601String(),
                 'email': _emailController.text,
-                'joinDate': _joinDate,
+                'joinDate': _joinDate.toIso8601String(),
                 'plan': _plan,
                 'price': _priceController.text,
-                'expiryDate': _expiryDate,
+                'expiryDate': _expiryDate.toIso8601String(),
                 'trainer': _trainerController.text.isEmpty ? 'Self' : _trainerController.text,
                 'imagePath': _image?.path,
               };
               if (widget.member != null) {
                 memberData['id'] = widget.member!['id'];
-                memberData['status'] = widget.member!['status'];
-                memberData['password'] = widget.member!['password'];
+                memberData['status'] = widget.member!['status'] ?? 'Active';
+                memberData['password'] = _passwordController.text;
               } else {
                 memberData['password'] = _passwordController.text;
+                memberData['status'] = 'Active';
               }
               widget.onSave(memberData);
               Navigator.pop(context);
@@ -700,9 +700,5 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
         _expiryDate = _joinDate.add(const Duration(days: 30));
       }
     });
-  }
-
-  void _updateExpiryDate() {
-    // Logic moved to _updateExpiryDateWithPlan
   }
 }

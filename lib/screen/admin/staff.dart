@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 import 'sidebar.dart';
 
 class StaffPage extends StatefulWidget {
@@ -26,7 +26,7 @@ class _StaffPageState extends State<StaffPage> {
   Future<void> _refreshStaff() async {
     setState(() => _isLoading = true);
     try {
-      final data = await FirebaseService.instance.getAllStaff();
+      final data = await DatabaseHelper.instance.queryAllStaff();
       setState(() {
         _staffList = data;
         _isLoading = false;
@@ -90,18 +90,18 @@ class _StaffPageState extends State<StaffPage> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: const Color(0xFF2D6A4F).withValues(alpha: 0.1),
-          backgroundImage: staff['imagePath'] != null ? NetworkImage(staff['imagePath']) : null,
+          backgroundColor: const Color(0xFF2D6A4F).withOpacity(0.1),
+          backgroundImage: staff['imagePath'] != null ? FileImage(File(staff['imagePath'].toString())) : null,
           child: staff['imagePath'] == null 
               ? Text(staff['name'][0].toUpperCase(), style: const TextStyle(color: Color(0xFF2D6A4F), fontWeight: FontWeight.bold))
               : null,
         ),
-        title: Text(staff['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(staff['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(staff['role'], style: const TextStyle(color: Color(0xFF2D6A4F), fontWeight: FontWeight.w600, fontSize: 13)),
-            Text(staff['phone'], style: const TextStyle(fontSize: 12)),
+            Text(staff['role'].toString(), style: const TextStyle(color: Color(0xFF2D6A4F), fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(staff['phone'].toString(), style: const TextStyle(fontSize: 12)),
           ],
         ),
         trailing: Row(
@@ -125,9 +125,8 @@ class _StaffPageState extends State<StaffPage> {
     );
   }
 
-  Future<void> _deleteStaff(dynamic id) async {
-    // Note: Delete logic for Firestore needs document ID
-    // We'll need to implement deleteStaff in FirebaseService
+  Future<void> _deleteStaff(int id) async {
+    await DatabaseHelper.instance.deleteStaff(id);
     _refreshStaff();
   }
 
@@ -141,7 +140,7 @@ class _StaffPageState extends State<StaffPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              _deleteStaff(id);
+              _deleteStaff(int.parse(id.toString()));
               Navigator.pop(context);
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -158,10 +157,10 @@ class _StaffPageState extends State<StaffPage> {
         staff: staff,
         onSave: (data) async {
           if (staff == null) {
-            await FirebaseService.instance.addStaff(data);
+            await DatabaseHelper.instance.insertStaff(data);
           } else {
-            final String id = staff['id'];
-            await FirebaseService.instance.updateStaff(id, data);
+            data['id'] = staff['id'];
+            await DatabaseHelper.instance.updateStaff(data);
           }
           _refreshStaff();
         },
@@ -169,28 +168,23 @@ class _StaffPageState extends State<StaffPage> {
     );
   }
 
-  Future<void> _deleteStaff(dynamic id) async {
-    await FirebaseService.instance.deleteStaff(id.toString());
-    _refreshStaff();
-  }
-
   void _showViewDialog(Map<String, dynamic> staff) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(staff['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(staff['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (staff['imagePath'] != null) 
-              Center(child: CircleAvatar(radius: 50, backgroundImage: FileImage(File(staff['imagePath'])))),
+              Center(child: CircleAvatar(radius: 50, backgroundImage: FileImage(File(staff['imagePath'].toString())))),
             const SizedBox(height: 15),
             Text('Role: ${staff['role']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))),
             const SizedBox(height: 5),
             Text('Email: ${staff['email']}'),
             Text('Phone: ${staff['phone']}'),
-            Text('Joined: ${DateFormat('dd MMM yyyy').format(DateTime.parse(staff['joinDate']))}'),
+            Text('Joined: ${DateFormat('dd MMM yyyy').format(DateTime.parse(staff['joinDate'].toString()))}'),
           ],
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
@@ -222,13 +216,13 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.staff?['name'] ?? '');
-    _emailController = TextEditingController(text: widget.staff?['email'] ?? '');
-    _passwordController = TextEditingController(text: widget.staff?['password'] ?? '');
-    _phoneController = TextEditingController(text: widget.staff?['phone']?.replaceAll('+91 ', '') ?? '');
-    _selectedRole = widget.staff?['role'] ?? 'Trainer';
+    _nameController = TextEditingController(text: widget.staff?['name']?.toString() ?? '');
+    _emailController = TextEditingController(text: widget.staff?['email']?.toString() ?? '');
+    _passwordController = TextEditingController(text: widget.staff?['password']?.toString() ?? '');
+    _phoneController = TextEditingController(text: widget.staff?['phone']?.toString().replaceAll('+91 ', '') ?? '');
+    _selectedRole = widget.staff?['role']?.toString() ?? 'Trainer';
     if (widget.staff?['imagePath'] != null) {
-      _image = File(widget.staff!['imagePath']);
+      _image = File(widget.staff!['imagePath'].toString());
     }
   }
 
@@ -350,7 +344,6 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
                                       _passwordController.text = newPassController.text;
                                     });
                                     Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated. Save to confirm.')));
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Min 6 characters')));
                                   }
@@ -389,7 +382,7 @@ class _AddStaffDialogState extends State<AddStaffDialog> {
                 'email': _emailController.text,
                 'password': _passwordController.text,
                 'phone': '+91 ${_phoneController.text}',
-                'joinDate': widget.staff?['joinDate'] ?? DateTime.now().toIso8601String(),
+                'joinDate': widget.staff?['joinDate']?.toString() ?? DateTime.now().toIso8601String(),
                 'imagePath': _image?.path,
               });
               Navigator.pop(context);

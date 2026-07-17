@@ -8,7 +8,7 @@ import 'package:excel/excel.dart' hide Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'sidebar.dart';
-import '../../services/firebase_service.dart';
+import '../../database_helper.dart';
 
 class PaymentsPage extends StatefulWidget {
   const PaymentsPage({super.key});
@@ -54,8 +54,8 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   Future<void> _loadData() async {
-    final members = await FirebaseService.instance.getAllMembers();
-    final payments = await FirebaseService.instance.getAllPayments();
+    final members = await DatabaseHelper.instance.queryAllMembers();
+    final payments = await DatabaseHelper.instance.queryAllPayments();
     setState(() {
       _allMembers = members;
       _allPayments = payments;
@@ -65,10 +65,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
   void _onMemberSelected(Map<String, dynamic> member) {
     setState(() {
       _selectedMember = member;
-      _memberName = member['name'];
+      _memberName = member['name'].toString();
       _memberId = member['id'].toString();
-      _membershipPlan = member['plan'];
-      _expiryDate = member['expiryDate'] is String ? DateTime.parse(member['expiryDate']) : member['expiryDate'];
+      _membershipPlan = member['plan'].toString();
+      _expiryDate = member['expiryDate'] is String ? DateTime.parse(member['expiryDate'].toString()) : member['expiryDate'];
       _priceController.text = member['price'].toString().replaceAll(',', '');
     });
   }
@@ -76,7 +76,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
   Future<void> _processPayment() async {
     if (_formKey.currentState!.validate()) {
       final paymentData = {
-        'memberId': _memberId,
+        'memberId': int.tryParse(_memberId),
         'memberName': _memberName,
         'plan': _membershipPlan,
         'price': _subtotal,
@@ -88,7 +88,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
         'status': 'Paid'
       };
 
-      await FirebaseService.instance.addPayment(paymentData);
+      await DatabaseHelper.instance.insertPayment(paymentData);
       _loadData();
       _showSuccessDialog();
     }
@@ -104,7 +104,6 @@ class _PaymentsPageState extends State<PaymentsPage> {
       bool matchesStatus = _filterStatus == 'All' || status == _filterStatus;
       
       if (_filterStatus == 'Defaulters') {
-        // Simple logic for demo: Inactive members are defaulters
         return matchesSearch && status != 'Paid';
       }
       
@@ -129,7 +128,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
               p['totalPayable'].toString(),
               p['paymentMethod'].toString(),
               p['status'].toString(),
-              DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate'])),
+              DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate'].toString())),
             ]).toList(),
           ),
         ],
@@ -156,13 +155,13 @@ class _PaymentsPageState extends State<PaymentsPage> {
 
     for (var p in _getFilteredPayments()) {
       sheetObject.appendRow([
-        IntCellValue(p['memberId'] ?? 0),
+        IntCellValue(int.tryParse(p['memberId'].toString()) ?? 0),
         TextCellValue(p['memberName'].toString()),
         TextCellValue(p['plan'].toString()),
-        DoubleCellValue(p['totalPayable']),
+        DoubleCellValue(double.tryParse(p['totalPayable'].toString()) ?? 0.0),
         TextCellValue(p['paymentMethod'].toString()),
         TextCellValue(p['status'].toString()),
-        TextCellValue(DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate']))),
+        TextCellValue(DateFormat('dd MMM yyyy').format(DateTime.parse(p['paymentDate'].toString()))),
       ]);
     }
 
@@ -195,7 +194,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
             _buildCard([
               _buildSectionTitle('Process Payment'),
               Autocomplete<Map<String, dynamic>>(
-                displayStringForOption: (option) => option['name'],
+                displayStringForOption: (option) => option['name'].toString(),
                 optionsBuilder: (textValue) => _allMembers.where((m) => m['name'].toString().toLowerCase().contains(textValue.text.toLowerCase())),
                 onSelected: _onMemberSelected,
                 fieldViewBuilder: (ctx, ctrl, node, onSub) => TextFormField(controller: ctrl, focusNode: node, decoration: const InputDecoration(labelText: 'Search Member', prefixIcon: Icon(Icons.search), border: OutlineInputBorder())),
@@ -264,15 +263,15 @@ class _PaymentsPageState extends State<PaymentsPage> {
                   ],
                   rows: filteredPayments.map((p) => DataRow(cells: [
                     DataCell(Text(p['memberId'].toString())),
-                    DataCell(Text(p['memberName'])),
+                    DataCell(Text(p['memberName'].toString())),
                     DataCell(Text('₹${p['totalPayable']}')),
                     DataCell(Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: p['status'] == 'Paid' ? Colors.green[50] : Colors.red[50], borderRadius: BorderRadius.circular(10)),
-                      child: Text(p['status'], style: TextStyle(color: p['status'] == 'Paid' ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                      decoration: BoxDecoration(color: p['status'].toString() == 'Paid' ? Colors.green[50] : Colors.red[50], borderRadius: BorderRadius.circular(10)),
+                      child: Text(p['status'].toString(), style: TextStyle(color: p['status'].toString() == 'Paid' ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
                     )),
                     DataCell(IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () async {
-                      await FirebaseService.instance.deletePayment(p['id']);
+                      await DatabaseHelper.instance.deletePayment(p['id']);
                       _loadData();
                     })),
                   ])).toList(),
@@ -292,7 +291,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
   Widget _buildCard(List<Widget> children) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );
   }

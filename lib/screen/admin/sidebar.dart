@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
 import 'dashboard.dart';
 import 'member.dart';
 import 'attendance.dart';
@@ -8,6 +9,7 @@ import 'events.dart';
 import 'feeplan.dart';
 import 'userprofile.dart';
 import 'maintenance.dart';
+import '../staff/staff_dashboard.dart';
 
 class AppSidebar extends StatelessWidget {
   final String currentPage;
@@ -16,6 +18,9 @@ class AppSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final role = AuthService.instance.currentRole ?? 'Admin';
+    final user = AuthService.instance.currentUser ?? {'name': 'Admin', 'email': 'admin@kartikeygym.com'};
+
     return Drawer(
       child: Container(
         color: Colors.white,
@@ -36,13 +41,14 @@ class AppSidebar extends StatelessWidget {
                   ),
                 ),
               ),
-              accountName: const Text('Kartikey Gym', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              accountEmail: const Text('admin@kartikeygym.com'),
+              accountName: Text(user['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              accountEmail: Text(user['email'].toString()),
             ),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
+                  // Dashboard
                   _buildSidebarTile(
                     context: context,
                     icon: Icons.grid_view,
@@ -50,103 +56,84 @@ class AppSidebar extends StatelessWidget {
                     isSelected: currentPage == 'Dashboard',
                     onTap: () {
                       if (currentPage != 'Dashboard') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardPage()));
+                        if (role == 'Admin') {
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardPage()));
+                        } else {
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => StaffDashboard(role: role, userData: user)));
+                        }
                       } else {
                         Navigator.pop(context);
                       }
                     },
                   ),
-                  _buildSidebarTile(
-                    context: context,
-                    icon: Icons.people,
-                    title: 'Members List',
-                    isSelected: currentPage == 'Members List',
-                    onTap: () {
-                      if (currentPage != 'Members List') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MemberPage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
+
+                  // Members List (Admin, Manager, Receptionist)
+                  if (role == 'Admin' || role == 'Manager' || role == 'Receptionist')
+                    _buildSidebarTile(
+                      context: context,
+                      icon: Icons.people,
+                      title: 'Members List',
+                      isSelected: currentPage == 'Members List',
+                      onTap: () => _nav(context, 'Members List', const MemberPage()),
+                    ),
+
+                  // Attendance (All)
                   _buildSidebarTile(
                     context: context,
                     icon: Icons.how_to_reg,
                     title: 'Attendance',
                     isSelected: currentPage == 'Attendance',
-                    onTap: () {
-                      if (currentPage != 'Attendance') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AttendancePage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
+                    onTap: () => _nav(context, 'Attendance', const AttendancePage()),
                   ),
-                  _buildSidebarTile(
-                    context: context,
-                    icon: Icons.badge,
-                    title: 'Staff',
-                    isSelected: currentPage == 'Staff',
-                    onTap: () {
-                      if (currentPage != 'Staff') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const StaffPage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
-                  _buildSidebarTile(
-                    context: context,
-                    icon: Icons.payment,
-                    title: 'Payments',
-                    isSelected: currentPage == 'Payments',
-                    onTap: () {
-                      if (currentPage != 'Payments') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PaymentsPage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
-                  _buildSidebarTile(
-                    context: context,
-                    icon: Icons.build,
-                    title: 'Maintenance',
-                    isSelected: currentPage == 'Maintenance',
-                    onTap: () {
-                      if (currentPage != 'Maintenance') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MaintenancePage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
+
+                  // Staff (Admin, Manager)
+                  if (role == 'Admin' || role == 'Manager')
+                    _buildSidebarTile(
+                      context: context,
+                      icon: Icons.badge,
+                      title: 'Staff',
+                      isSelected: currentPage == 'Staff',
+                      onTap: () => _nav(context, 'Staff', const StaffPage()),
+                    ),
+
+                  // Payments (Admin, Manager, Receptionist)
+                  if (role == 'Admin' || role == 'Manager' || role == 'Receptionist')
+                    _buildSidebarTile(
+                      context: context,
+                      icon: Icons.payment,
+                      title: 'Payments',
+                      isSelected: currentPage == 'Payments',
+                      onTap: () => _nav(context, 'Payments', const PaymentsPage()),
+                    ),
+
+                  // Maintenance (Admin, Manager, Trainer)
+                  if (role == 'Admin' || role == 'Manager' || role == 'Trainer')
+                    _buildSidebarTile(
+                      context: context,
+                      icon: Icons.build,
+                      title: 'Maintenance',
+                      isSelected: currentPage == 'Maintenance',
+                      onTap: () => _nav(context, 'Maintenance', const MaintenancePage()),
+                    ),
+
+                  // Events (All)
                   _buildSidebarTile(
                     context: context,
                     icon: Icons.event,
                     title: 'Event Planner',
                     isSelected: currentPage == 'Event Planner',
-                    onTap: () {
-                      if (currentPage != 'Event Planner') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EventsPage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
+                    onTap: () => _nav(context, 'Event Planner', const EventsPage()),
                   ),
-                  _buildSidebarTile(
-                    context: context,
-                    icon: Icons.receipt_long,
-                    title: 'Fee Plans',
-                    isSelected: currentPage == 'Fee Plans',
-                    onTap: () {
-                      if (currentPage != 'Fee Plans') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const FeePlanPage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
+
+                  // Fee Plans (Admin only)
+                  if (role == 'Admin')
+                    _buildSidebarTile(
+                      context: context,
+                      icon: Icons.receipt_long,
+                      title: 'Fee Plans',
+                      isSelected: currentPage == 'Fee Plans',
+                      onTap: () => _nav(context, 'Fee Plans', const FeePlanPage()),
+                    ),
                 ],
               ),
             ),
@@ -156,24 +143,22 @@ class AppSidebar extends StatelessWidget {
               child: ExpansionTile(
                 initiallyExpanded: currentPage == 'Profile',
                 leading: const Icon(Icons.admin_panel_settings, color: Color(0xFF2D6A4F)),
-                title: const Text('Admin', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))),
+                title: const Text('Account', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))),
                 children: [
-                  ListTile(
-                    leading: const Icon(Icons.person_outline, color: Color(0xFF2D6A4F)),
-                    title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-                    tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withOpacity(0.08) : null,
-                    onTap: () {
-                      if (currentPage != 'Profile') {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const UserProfilePage()));
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
+                  if (role == 'Admin')
+                    ListTile(
+                      leading: const Icon(Icons.person_outline, color: Color(0xFF2D6A4F)),
+                      title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                      tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withOpacity(0.08) : null,
+                      onTap: () => _nav(context, 'Profile', const UserProfilePage()),
+                    ),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                    onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
+                    onTap: () {
+                      AuthService.instance.logout();
+                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                    },
                   ),
                 ],
               ),
@@ -183,6 +168,14 @@ class AppSidebar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _nav(BuildContext context, String title, Widget page) {
+    if (currentPage != title) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => page));
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   Widget _buildSidebarTile({

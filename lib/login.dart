@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
+import 'services/auth_service.dart';
 import 'screen/admin/dashboard.dart';
 import 'screen/staff/staff_dashboard.dart';
 import 'screen/customer/customer_dashboard.dart';
@@ -33,6 +34,7 @@ class _LoginPageState extends State<LoginPage> {
 
       // 1. Master Admin check
       if (email == 'adminkartikey' && password == 'Kartikey@1805') {
+        AuthService.instance.setUser({'name': 'Admin', 'email': email}, 'Admin');
         _navigateTo(const DashboardPage());
         return;
       }
@@ -45,6 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (staffUser != null) {
+        AuthService.instance.setUser(staffUser, staffUser['role']);
         _navigateTo(StaffDashboard(role: staffUser['role'], userData: staffUser));
         return;
       }
@@ -57,6 +60,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (memberUser != null) {
+        AuthService.instance.setUser(memberUser, 'Member');
         _navigateTo(CustomerDashboard(userData: memberUser));
         return;
       }

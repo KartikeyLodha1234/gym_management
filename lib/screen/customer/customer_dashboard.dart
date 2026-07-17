@@ -568,6 +568,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () {},
           ),
+          const SizedBox(height: 40),
+          _buildCopyright(),
+          const SizedBox(height: 20),
         ],
       ),
     );

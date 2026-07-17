@@ -32,12 +32,18 @@ class _TransitionLoadingScreenState extends State<TransitionLoadingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
+            Image.asset(
+              'assets/logo.png',
+              height: 80,
+              errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 50),
+            ),
+            const SizedBox(height: 30),
+            const CircularProgressIndicator(
               color: Color(0xFF2D6A4F),
               strokeWidth: 3,
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'Initializing your dashboard...',
               style: TextStyle(
                 color: Color(0xFF2D6A4F),

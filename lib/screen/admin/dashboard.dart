@@ -147,6 +147,25 @@ class _DashboardPageState extends State<DashboardPage> {
                   else
                     ..._todayEvents.map((e) => _buildEventItem(e)),
                   
+                  const SizedBox(height: 40),
+                  const Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          '© 2026 Kartikey Gym | All Rights Reserved',
+                          style: TextStyle(color: Colors.grey, fontSize: 10),
+                        ),
+                        Text(
+                          'Designed & Developed by Kartikey',
+                          style: TextStyle(
+                            color: Color(0xFF2D6A4F), 
+                            fontSize: 11, 
+                            fontWeight: FontWeight.w600
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 20),
                 ],
               ),

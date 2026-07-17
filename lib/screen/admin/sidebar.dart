@@ -36,14 +36,11 @@ class AppSidebar extends StatelessWidget {
                     ? FileImage(File(imagePath)) 
                     : null,
                 child: (imagePath == null || !File(imagePath).existsSync()) 
-                    ? Padding(
-                        padding: const EdgeInsets.all(2.0),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/logo.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 40),
-                          ),
+                    ? ClipOval(
+                        child: Image.asset(
+                          'assets/logo.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 40),
                         ),
                       )
                     : null,

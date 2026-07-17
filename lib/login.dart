@@ -179,6 +179,21 @@ class _LoginPageState extends State<LoginPage> {
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text('Login', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       ),
+                      const SizedBox(height: 30),
+                      const Text(
+                        '© 2024 Kartikey Gym | All Rights Reserved',
+                        style: TextStyle(color: Color(0xFF52796F), fontSize: 10),
+                      ),
+                      const Text(
+                        'Designed & Developed by Kartikey',
+                        style: TextStyle(
+                          color: Color(0xFF2D6A4F), 
+                          fontSize: 12, 
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

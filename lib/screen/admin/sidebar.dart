@@ -167,6 +167,11 @@ class AppSidebar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
+            const Text(
+              'v1.0.2 | Developed by Kartikey',
+              style: TextStyle(color: Colors.grey, fontSize: 10),
+            ),
+            const SizedBox(height: 10),
           ],
         ),
       ),

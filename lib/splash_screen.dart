@@ -87,6 +87,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 color: Colors.white,
                 strokeWidth: 2,
               ),
+              const SizedBox(height: 50),
+              const Text(
+                'Developed by Kartikey',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
             ],
           ),
         ),

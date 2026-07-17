@@ -240,8 +240,30 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           _buildMembershipCard(joinDate, expiryDate, remainingDays),
           const SizedBox(height: 20),
           _buildAttendanceQuickCard(),
+          const SizedBox(height: 40),
+          _buildCopyright(),
+          const SizedBox(height: 20),
         ],
       ),
+    );
+  }
+
+  Widget _buildCopyright() {
+    return const Column(
+      children: [
+        Text(
+          '© 2026 Kartikey Gym | All Rights Reserved',
+          style: TextStyle(color: Colors.grey, fontSize: 10),
+        ),
+        Text(
+          'Designed & Developed by Kartikey',
+          style: TextStyle(
+            color: Color(0xFF2D6A4F), 
+            fontSize: 11, 
+            fontWeight: FontWeight.w600
+          ),
+        ),
+      ],
     );
   }
 

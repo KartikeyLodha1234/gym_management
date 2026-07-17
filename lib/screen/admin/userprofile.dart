@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../services/auth_service.dart';
 import 'sidebar.dart';
 
 class UserProfilePage extends StatefulWidget {
@@ -13,20 +14,33 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Kartikey Gym Admin');
-  final _emailController = TextEditingController(text: 'admin@kartikeygym.com');
-  final _gymNameController = TextEditingController(text: 'Kartikey Gym');
-  final _addressController = TextEditingController(text: '123 Fitness Street, New Delhi');
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _gymNameController;
+  late TextEditingController _addressController;
   
   File? _profileImage;
   bool _isEditing = false;
+  late String _role;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = AuthService.instance.currentUser;
+    _role = AuthService.instance.currentRole ?? 'Admin';
+    
+    _nameController = TextEditingController(text: user?['name']?.toString() ?? 'Kartikey Gym Admin');
+    _emailController = TextEditingController(text: user?['email']?.toString() ?? 'admin@kartikeygym.com');
+    _gymNameController = TextEditingController(text: 'Kartikey Gym');
+    _addressController = TextEditingController(text: '123 Fitness Street, New Delhi');
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       final appDir = await getApplicationDocumentsDirectory();
-      final fileName = 'admin_profile.jpg';
+      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
       setState(() => _profileImage = savedImage);
     }
@@ -108,7 +122,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text('Admin Profile', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text('$_role Profile', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: Icon(_isEditing ? Icons.save : Icons.edit, color: const Color(0xFF2D6A4F)),
@@ -165,8 +179,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 children: [
                   _buildProfileField('Full Name', _nameController, Icons.person),
                   _buildProfileField('Email Address', _emailController, Icons.email),
-                  _buildProfileField('Gym Name', _gymNameController, Icons.fitness_center),
-                  _buildProfileField('Gym Address', _addressController, Icons.location_on, maxLines: 2),
+                  if (_role == 'Admin') ...[
+                    _buildProfileField('Gym Name', _gymNameController, Icons.fitness_center),
+                    _buildProfileField('Gym Address', _addressController, Icons.location_on, maxLines: 2),
+                  ],
                 ],
               ),
             ),

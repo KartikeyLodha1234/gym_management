@@ -145,13 +145,12 @@ class AppSidebar extends StatelessWidget {
                 leading: const Icon(Icons.admin_panel_settings, color: Color(0xFF2D6A4F)),
                 title: const Text('Account', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F))),
                 children: [
-                  if (role == 'Admin')
-                    ListTile(
-                      leading: const Icon(Icons.person_outline, color: Color(0xFF2D6A4F)),
-                      title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-                      tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withOpacity(0.08) : null,
-                      onTap: () => _nav(context, 'Profile', const UserProfilePage()),
-                    ),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline, color: Color(0xFF2D6A4F)),
+                    title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                    tileColor: currentPage == 'Profile' ? const Color(0xFF2D6A4F).withOpacity(0.08) : null,
+                    onTap: () => _nav(context, 'Profile', const UserProfilePage()),
+                  ),
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

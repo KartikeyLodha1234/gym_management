@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import 'dashboard.dart';
@@ -20,6 +21,7 @@ class AppSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final role = AuthService.instance.currentRole ?? 'Admin';
     final user = AuthService.instance.currentUser ?? {'name': 'Admin', 'email': 'admin@kartikeygym.com'};
+    final imagePath = user['imagePath']?.toString();
 
     return Drawer(
       child: Container(
@@ -30,16 +32,21 @@ class AppSidebar extends StatelessWidget {
               decoration: const BoxDecoration(color: Color(0xFF2D6A4F)),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(2.0),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 40),
-                    ),
-                  ),
-                ),
+                backgroundImage: (imagePath != null && File(imagePath).existsSync()) 
+                    ? FileImage(File(imagePath)) 
+                    : null,
+                child: (imagePath == null || !File(imagePath).existsSync()) 
+                    ? Padding(
+                        padding: const EdgeInsets.all(2.0),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/logo.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, color: Color(0xFF2D6A4F), size: 40),
+                          ),
+                        ),
+                      )
+                    : null,
               ),
               accountName: Text(user['name'].toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               accountEmail: Text(user['email'].toString()),

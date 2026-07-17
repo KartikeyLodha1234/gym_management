@@ -33,6 +33,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
     _emailController = TextEditingController(text: user?['email']?.toString() ?? 'admin@kartikeygym.com');
     _gymNameController = TextEditingController(text: 'Kartikey Gym');
     _addressController = TextEditingController(text: '123 Fitness Street, New Delhi');
+
+    if (user?['imagePath'] != null && File(user!['imagePath'].toString()).existsSync()) {
+      _profileImage = File(user['imagePath'].toString());
+    }
   }
 
   Future<void> _pickImage() async {

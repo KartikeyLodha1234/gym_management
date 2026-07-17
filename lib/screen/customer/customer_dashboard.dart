@@ -369,21 +369,30 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
   Widget _buildAttendanceView() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _attendanceHistory.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final record = _attendanceHistory[index];
-        return Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          child: ListTile(
-            leading: CircleAvatar(backgroundColor: const Color(0xFF2D6A4F).withOpacity(0.1), child: const Icon(Icons.check, color: Color(0xFF2D6A4F))),
-            title: Text(DateFormat('dd MMMM yyyy').format(DateTime.parse(record['date'])), style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('In: ${record['time']} • Out: ${record['checkOutTime'] ?? "Pending"}'),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: _attendanceHistory.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final record = _attendanceHistory[index];
+              return Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: ListTile(
+                  leading: CircleAvatar(backgroundColor: const Color(0xFF2D6A4F).withOpacity(0.1), child: const Icon(Icons.check, color: Color(0xFF2D6A4F))),
+                  title: Text(DateFormat('dd MMMM yyyy').format(DateTime.parse(record['date'])), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('In: ${record['time']} • Out: ${record['checkOutTime'] ?? "Pending"}'),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 10),
+        _buildCopyright(),
+        const SizedBox(height: 20),
+      ],
     );
   }
 
@@ -416,13 +425,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               trailing: Text(p['paymentMethod'], style: const TextStyle(color: Colors.grey, fontSize: 12)),
             ),
           )).toList(),
+          const SizedBox(height: 30),
+          _buildCopyright(),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
   Widget _buildSupportView() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
@@ -430,6 +442,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           _buildSupportCard('Contact Gym', 'General inquiries and billing', '9352671104', Icons.business, Colors.blue),
           const SizedBox(height: 15),
           _buildSupportCard('Contact Trainer', 'Workout and diet related help', '9664153249', Icons.person, Colors.orange),
+          const SizedBox(height: 40),
+          _buildCopyright(),
+          const SizedBox(height: 20),
         ],
       ),
     );

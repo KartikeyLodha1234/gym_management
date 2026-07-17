@@ -339,4 +339,17 @@ class DatabaseHelper {
     final db = await instance.database;
     return await db.delete('plans', where: 'id = ?', whereArgs: [id]);
   }
+
+  // Admin Settings
+  Future<void> saveAdminSetting(String key, String value) async {
+    final db = await instance.database;
+    await db.insert('admin_settings', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<String?> getAdminSetting(String key) async {
+    final db = await instance.database;
+    final res = await db.query('admin_settings', where: 'key = ?', whereArgs: [key]);
+    if (res.isNotEmpty) return res.first['value'] as String;
+    return null;
+  }
 }

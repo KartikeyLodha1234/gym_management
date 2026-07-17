@@ -35,7 +35,14 @@ class _LoginPageState extends State<LoginPage> {
 
       // 1. Master Admin check
       if (email == 'adminkartikey' && password == 'Kartikey@1805') {
-        AuthService.instance.setUser({'name': 'Admin', 'email': email}, 'Admin');
+        final adminImagePath = await DatabaseHelper.instance.getAdminSetting('profile_image');
+        final adminName = await DatabaseHelper.instance.getAdminSetting('admin_name') ?? 'Admin';
+        
+        AuthService.instance.setUser({
+          'name': adminName, 
+          'email': email,
+          'imagePath': adminImagePath
+        }, 'Admin');
         _navigateTo(const DashboardPage());
         return;
       }

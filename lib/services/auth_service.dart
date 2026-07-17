@@ -6,8 +6,14 @@ class AuthService {
   String? _currentRole;
 
   void setUser(Map<String, dynamic>? user, String? role) {
-    _currentUser = user;
+    _currentUser = user != null ? Map<String, dynamic>.from(user) : null;
     _currentRole = role;
+  }
+
+  void updateUser(Map<String, dynamic> data) {
+    if (_currentUser != null) {
+      _currentUser!.addAll(data);
+    }
   }
 
   Map<String, dynamic>? get currentUser => _currentUser;

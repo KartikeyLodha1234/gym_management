@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../services/auth_service.dart';
 import 'sidebar.dart';
+import '../../database_helper.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -118,6 +119,41 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  Future<void> _saveProfile() async {
+    final user = AuthService.instance.currentUser;
+    final role = AuthService.instance.currentRole;
+
+    if (role == 'Admin') {
+      if (_profileImage != null) {
+        await DatabaseHelper.instance.saveAdminSetting('profile_image', _profileImage!.path);
+        AuthService.instance.updateUser({'imagePath': _profileImage!.path});
+      }
+      await DatabaseHelper.instance.saveAdminSetting('admin_name', _nameController.text);
+      AuthService.instance.updateUser({'name': _nameController.text});
+    } else if (role == 'Member') {
+      final updatedData = Map<String, dynamic>.from(user!);
+      updatedData['name'] = _nameController.text;
+      if (_profileImage != null) updatedData['imagePath'] = _profileImage!.path;
+      
+      await DatabaseHelper.instance.updateMember(updatedData);
+      AuthService.instance.setUser(updatedData, 'Member');
+    } else {
+      // Staff (Manager, Trainer, etc)
+      final updatedData = Map<String, dynamic>.from(user!);
+      updatedData['name'] = _nameController.text;
+      if (_profileImage != null) updatedData['imagePath'] = _profileImage!.path;
+      
+      await DatabaseHelper.instance.updateStaff(updatedData);
+      AuthService.instance.setUser(updatedData, updatedData['role']);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile Updated Successfully!'), backgroundColor: Colors.green),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,21 +166,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
         actions: [
           IconButton(
             icon: Icon(_isEditing ? Icons.save : Icons.edit, color: const Color(0xFF2D6A4F)),
-            onPressed: () {
+            onPressed: () async {
+              if (_isEditing) {
+                await _saveProfile();
+              }
               setState(() {
-                if (_isEditing) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile Updated Successfully!'), backgroundColor: Colors.green),
-                  );
-                }
                 _isEditing = !_isEditing;
               });
             },
           )
         ],
       ),
-      drawer: const AppSidebar(currentPage: 'Profile'),
-      body: SingleChildScrollView(
+      drawer: const AppSidebar(currentPage: 'Profile'),      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [

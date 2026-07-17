@@ -187,6 +187,26 @@ class _StaffDashboardState extends State<StaffDashboard> {
                   const Text('Quick Access', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B4332))),
                   const SizedBox(height: 15),
                   _buildRoleShortcuts(),
+                  const SizedBox(height: 40),
+                  const Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          '© 2026 Kartikey Gym | All Rights Reserved',
+                          style: TextStyle(color: Colors.grey, fontSize: 10),
+                        ),
+                        Text(
+                          'Designed & Developed by Kartikey',
+                          style: TextStyle(
+                            color: Color(0xFF2D6A4F), 
+                            fontSize: 11, 
+                            fontWeight: FontWeight.w600
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),

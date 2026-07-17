@@ -163,6 +163,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       ),
       drawer: _buildDrawer(),
       body: pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF2D6A4F),
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        elevation: 10,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.history_outlined), activeIcon: Icon(Icons.history), label: 'Attendance'),
+          BottomNavigationBarItem(icon: Icon(Icons.payments_outlined), activeIcon: Icon(Icons.payments), label: 'Payments'),
+          BottomNavigationBarItem(icon: Icon(Icons.contact_support_outlined), activeIcon: Icon(Icons.contact_support), label: 'Support'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
     );
   }
 

@@ -181,7 +181,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 30),
                       const Text(
-                        '© 2024 Kartikey Gym | All Rights Reserved',
+                        '© 2026 Kartikey Gym | All Rights Reserved',
                         style: TextStyle(color: Color(0xFF52796F), fontSize: 10),
                       ),
                       const Text(

@@ -95,11 +95,31 @@ class _LoginPageState extends State<LoginPage> {
                 const Text('Login to Continue', style: TextStyle(fontSize: 18, color: Color(0xFF52796F))),
                 const SizedBox(height: 30),
                 Center(
-                  child: Image.asset(
-                    'assets/logo.png',
-                    height: 250,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stack) => const Icon(Icons.fitness_center, size: 100, color: Color(0xFF2D6A4F)),
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        )
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stack) => const Icon(
+                          Icons.fitness_center,
+                          size: 80,
+                          color: Color(0xFF2D6A4F),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),

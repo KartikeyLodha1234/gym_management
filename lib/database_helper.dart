@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 12, // Incremented for verification features
+      version: 13, // Incremented for Admin Settings
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -61,6 +61,9 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE attendance ADD COLUMN checkOutLong REAL');
       } catch (e) {}
     }
+    if (oldVersion < 13) {
+      await db.execute('CREATE TABLE admin_settings (key TEXT PRIMARY KEY, value TEXT)');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -91,6 +94,7 @@ class DatabaseHelper {
     await _createMaintenanceTable(db);
     await _createPlansTable(db);
     await _createInventoryTable(db);
+    await db.execute('CREATE TABLE admin_settings (key TEXT PRIMARY KEY, value TEXT)');
   }
 
   Future _createPaymentsTable(Database db) async {
